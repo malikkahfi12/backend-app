@@ -1,0 +1,30 @@
+meta {
+  name: Create Stop
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/stops
+  body: json
+  auth: none
+}
+
+headers {
+  x-api-key: {{api_key}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "regionId": "region-id",
+    "code": "HARMONI",
+    "name": "Harmoni",
+    "slug": "harmoni",
+    "latitude": -6.1675,
+    "longitude": 106.8203,
+    "address": "Jl. Gajah Mada, Jakarta Pusat",
+    "isStation": true,
+    "isActive": true
+  }
+}

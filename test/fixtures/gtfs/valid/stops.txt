@@ -1,0 +1,4 @@
+stop_id,stop_name,stop_lat,stop_lon,location_type
+lebak-bulus,Lebak Bulus,-6.2892,106.7745,1
+fatmawati,Fatmawati,-6.2929,106.7927,1
+bundaran-hi,Bundaran HI,-6.1938,106.8230,1

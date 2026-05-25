@@ -1,0 +1,22 @@
+export type StopEntity = {
+  id: string;
+  feedSourceId: string | null;
+  externalStopId: string | null;
+  regionId: string;
+  code: string | null;
+  name: string;
+  slug: string;
+  latitude: number;
+  longitude: number;
+  address: string | null;
+  locationType: number | null;
+  isStation: boolean;
+  parentStationId: string | null;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  osmId: string | null;
+  osmType: string | null;
+  source: string | null;
+  mode: string | null;
+};

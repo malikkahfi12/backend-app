@@ -1,0 +1,15 @@
+meta {
+  name: 02 Nearby Stops (GPS)
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/stops/nearby?lat={{lat}}&lng={{lng}}&radius=500
+  body: none
+  auth: none
+}
+
+headers {
+  x-api-key: {{api_key}}
+}

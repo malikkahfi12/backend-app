@@ -1,0 +1,6 @@
+export enum FeedSourceType {
+  GTFS_STATIC = 'GTFS_STATIC',
+  GTFS_REALTIME = 'GTFS_REALTIME',
+  CUSTOM_API = 'CUSTOM_API',
+  MANUAL = 'MANUAL',
+}

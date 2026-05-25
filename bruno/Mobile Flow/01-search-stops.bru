@@ -1,0 +1,19 @@
+meta {
+  name: 01 Search Stops
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url}}/stops?q=GBK
+  body: none
+  auth: none
+}
+
+params:query {
+  q: GBK
+}
+
+headers {
+  x-api-key: {{api_key}}
+}

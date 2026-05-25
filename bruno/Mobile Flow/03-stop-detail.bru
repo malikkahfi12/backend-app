@@ -1,0 +1,15 @@
+meta {
+  name: 03 Stop Detail + Departures
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{base_url}}/stops/{{stop_id}}/with-departures
+  body: none
+  auth: none
+}
+
+headers {
+  x-api-key: {{api_key}}
+}

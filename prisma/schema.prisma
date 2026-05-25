@@ -1,0 +1,411 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model SystemMetadata {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("system_metadata")
+}
+
+enum OperatorType {
+  GOVERNMENT
+  PRIVATE
+  PUBLIC_PRIVATE
+  COMMUNITY
+}
+
+enum FeedSourceType {
+  GTFS_STATIC
+  GTFS_REALTIME
+  CUSTOM_API
+  MANUAL
+}
+
+enum FeedFormat {
+  GTFS_ZIP
+  GTFS_REALTIME_PROTOBUF
+  JSON
+  CSV
+  MANUAL
+}
+
+model Country {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  regions Region[]
+
+  @@map("ms_countries")
+}
+
+model Region {
+  id            String   @id @default(uuid())
+  countryId     String   @map("country_id")
+  code          String
+  name          String
+  timezone      String
+  defaultLocale String   @map("default_locale")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  country        Country        @relation(fields: [countryId], references: [id], onDelete: Restrict)
+  operators      Operator[]
+  agencies       Agency[]
+  stops          Stop[]
+  trips          Trip[]
+  calendars      Calendar[]
+  calendarDates  CalendarDate[]
+  routes         Route[]
+
+  @@unique([countryId, code])
+  @@index([countryId])
+  @@map("ms_regions")
+}
+
+model Operator {
+  id         String       @id @default(uuid())
+  regionId   String       @map("region_id")
+  code       String
+  name       String
+  type       OperatorType
+  websiteUrl String?      @map("website_url")
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
+
+  region           Region                @relation(fields: [regionId], references: [id], onDelete: Restrict)
+  transitModes     OperatorTransitMode[]
+  feedSources      FeedSource[]
+  agencies         Agency[]
+  trips            Trip[]
+  calendars      Calendar[]
+  calendarDates  CalendarDate[]
+
+  @@unique([regionId, code])
+  @@index([regionId])
+  @@map("ms_operators")
+}
+
+model TransitMode {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  operators OperatorTransitMode[]
+  routes    Route[]
+
+  @@map("ms_transit_modes")
+}
+
+model OperatorTransitMode {
+  operatorId    String @map("operator_id")
+  transitModeId String @map("transit_mode_id")
+
+  operator    Operator    @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  transitMode TransitMode @relation(fields: [transitModeId], references: [id], onDelete: Cascade)
+
+  @@id([operatorId, transitModeId])
+  @@unique([operatorId, transitModeId])
+  @@index([transitModeId])
+  @@map("ms_operator_modes")
+}
+
+model FeedSource {
+  id         String         @id @default(uuid())
+  operatorId String         @map("operator_id")
+  type       FeedSourceType
+  name       String
+  url        String?
+  format     FeedFormat
+  isActive   Boolean        @default(true) @map("is_active")
+  createdAt  DateTime       @default(now()) @map("created_at")
+  updatedAt  DateTime       @updatedAt @map("updated_at")
+
+  operator Operator @relation(fields: [operatorId], references: [id], onDelete: Restrict)
+
+  importJobs     ImportJob[]
+  agencies       Agency[]
+  routes         Route[]
+  stops          Stop[]
+  trips          Trip[]
+  calendars      Calendar[]
+  calendarDates  CalendarDate[]
+  shapes         Shape[]
+
+  @@unique([operatorId, type, name])
+  @@index([operatorId])
+  @@map("ms_feed_sources")
+}
+
+model Agency {
+  id               String   @id @default(uuid())
+  feedSourceId     String?  @map("feed_source_id")
+  externalAgencyId String?  @map("external_agency_id")
+  regionId         String   @map("region_id")
+  operatorId       String   @map("operator_id")
+  name             String
+  slug             String
+  timezone         String
+  language         String   @default("id")
+  phone            String?
+  website          String?
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  operator   Operator   @relation(fields: [operatorId], references: [id], onDelete: Restrict)
+  region     Region     @relation(fields: [regionId], references: [id], onDelete: Restrict)
+  feedSource FeedSource? @relation(fields: [feedSourceId], references: [id], onDelete: SetNull)
+  routes     Route[]
+
+  @@unique([regionId, slug])
+  @@unique([feedSourceId, externalAgencyId])
+  @@index([regionId])
+  @@index([operatorId])
+  @@index([feedSourceId])
+  @@map("gtfs_agencies")
+}
+
+model Route {
+  id             String   @id @default(uuid())
+  feedSourceId   String?  @map("feed_source_id")
+  externalRouteId String? @map("external_route_id")
+  agencyId       String   @map("agency_id")
+  transitModeId  String   @map("transit_mode_id")
+  shortName      String   @map("short_name")
+  longName       String   @map("long_name")
+  description    String?
+  color          String?
+  textColor      String?  @map("text_color")
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  osmId          String?  @map("osm_id")
+  osmType        String?  @map("osm_type")
+  source         String?  @default("gtfs")
+  regionId       String?  @map("region_id")
+  geometry                 Unsupported("geography(LineString,4326)")?
+  matchedOsmRouteId         String?  @map("matched_osm_route_id")
+  geometrySource            String?  @default("gtfs") @map("geometry_source")
+  geometryConfidenceScore   Float?   @map("geometry_confidence_score")
+
+  agency      Agency      @relation(fields: [agencyId], references: [id], onDelete: Restrict)
+  transitMode TransitMode @relation(fields: [transitModeId], references: [id], onDelete: Restrict)
+  feedSource  FeedSource? @relation(fields: [feedSourceId], references: [id], onDelete: SetNull)
+  region      Region?     @relation(fields: [regionId], references: [id], onDelete: SetNull)
+  trips       Trip[]
+  routeStops  RouteStop[]
+
+  @@unique([feedSourceId, externalRouteId])
+  @@unique([osmId, osmType])
+  @@index([agencyId])
+  @@index([transitModeId])
+  @@index([feedSourceId])
+  @@index([regionId])
+  @@map("gtfs_routes")
+}
+
+model Stop {
+  id              String   @id @default(uuid())
+  feedSourceId    String?  @map("feed_source_id")
+  externalStopId  String?  @map("external_stop_id")
+  regionId        String   @map("region_id")
+  code            String?
+  name            String
+  slug            String
+  latitude        Float
+  longitude       Float
+  location        Unsupported("geography(Point,4326)")?
+  address         String?
+  locationType    Int?     @map("location_type")
+  isStation       Boolean  @default(false) @map("is_station")
+  parentStationId String?  @map("parent_station_id")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  osmId           String?  @map("osm_id")
+  osmType         String?  @map("osm_type")
+  source          String?  @default("gtfs")
+  mode            String?
+
+  region        Region      @relation(fields: [regionId], references: [id], onDelete: Restrict)
+  feedSource    FeedSource? @relation(fields: [feedSourceId], references: [id], onDelete: SetNull)
+  parentStation Stop?       @relation("StopHierarchy", fields: [parentStationId], references: [id])
+  childStations Stop[]      @relation("StopHierarchy")
+  stopTimes     StopTime[]
+  routeStops    RouteStop[]
+
+  @@unique([regionId, slug])
+  @@unique([feedSourceId, externalStopId])
+  @@unique([osmId, osmType])
+  @@index([regionId])
+  @@index([parentStationId])
+  @@index([feedSourceId])
+  @@index([osmId])
+  @@map("gtfs_stops")
+}
+
+model Trip {
+  id             String   @id @default(uuid())
+  feedSourceId   String?  @map("feed_source_id")
+  externalTripId String?  @map("external_trip_id")
+  routeId        String   @map("route_id")
+  serviceId      String   @map("service_id")
+  headsign       String
+  directionId    Int?     @map("direction_id")
+  blockId        String?  @map("block_id")
+  regionId       String   @map("region_id")
+  operatorId     String   @map("operator_id")
+  externalShapeId String?  @map("external_shape_id")
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  route      Route       @relation(fields: [routeId], references: [id], onDelete: Restrict)
+  feedSource FeedSource? @relation(fields: [feedSourceId], references: [id], onDelete: SetNull)
+  region     Region      @relation(fields: [regionId], references: [id], onDelete: Restrict)
+  operator   Operator    @relation(fields: [operatorId], references: [id], onDelete: Restrict)
+  stopTimes  StopTime[]
+
+  @@unique([feedSourceId, externalTripId])
+  @@unique([externalTripId, operatorId])
+  @@index([routeId])
+  @@index([serviceId])
+  @@index([feedSourceId])
+  @@index([regionId])
+  @@index([operatorId])
+  @@map("gtfs_trips")
+}
+
+model StopTime {
+  id               String @id @default(uuid())
+  tripId           String @map("trip_id")
+  stopId           String @map("stop_id")
+  stopSequence     Int    @map("stop_sequence")
+  arrivalTime      String @map("arrival_time")
+  departureTime    String @map("departure_time")
+  arrivalSeconds   Int?   @map("arrival_seconds")
+  departureSeconds Int?   @map("departure_seconds")
+  pickupType       Int?   @map("pickup_type")
+  dropOffType      Int?   @map("drop_off_type")
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  stop Stop @relation(fields: [stopId], references: [id], onDelete: Restrict)
+
+  @@unique([tripId, stopSequence])
+  @@index([tripId])
+  @@index([stopId])
+  @@map("gtfs_stop_times")
+}
+
+model Calendar {
+  id           String   @id @default(uuid())
+  feedSourceId String?  @map("feed_source_id")
+  serviceId    String   @map("service_id")
+  monday       Boolean  @default(false)
+  tuesday      Boolean  @default(false)
+  wednesday    Boolean  @default(false)
+  thursday     Boolean  @default(false)
+  friday       Boolean  @default(false)
+  saturday     Boolean  @default(false)
+  sunday       Boolean  @default(false)
+  startDate    DateTime @map("start_date") @db.Date
+  endDate      DateTime @map("end_date") @db.Date
+  regionId     String   @map("region_id")
+  operatorId   String   @map("operator_id")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  feedSource FeedSource? @relation(fields: [feedSourceId], references: [id], onDelete: SetNull)
+  region     Region      @relation(fields: [regionId], references: [id], onDelete: Restrict)
+  operator   Operator    @relation(fields: [operatorId], references: [id], onDelete: Restrict)
+
+  @@unique([feedSourceId, serviceId])
+  @@unique([serviceId, operatorId])
+  @@index([serviceId])
+  @@index([feedSourceId])
+  @@index([regionId])
+  @@index([operatorId])
+  @@map("gtfs_calendars")
+}
+
+model CalendarDate {
+  id            String   @id @default(uuid())
+  feedSourceId  String?  @map("feed_source_id")
+  serviceId     String   @map("service_id")
+  date          DateTime @map("date") @db.Date
+  exceptionType Int      @map("exception_type")
+  regionId      String   @map("region_id")
+  operatorId    String   @map("operator_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  feedSource FeedSource? @relation(fields: [feedSourceId], references: [id], onDelete: SetNull)
+  region     Region      @relation(fields: [regionId], references: [id], onDelete: Restrict)
+  operator   Operator    @relation(fields: [operatorId], references: [id], onDelete: Restrict)
+
+  @@unique([serviceId, date, operatorId])
+  @@index([serviceId])
+  @@index([operatorId])
+  @@map("gtfs_calendar_dates")
+}
+
+model Shape {
+  id                String  @id @default(uuid())
+  feedSourceId      String? @map("feed_source_id")
+  externalShapeId   String  @map("external_shape_id")
+  shapePtLat        Float   @map("shape_pt_lat")
+  shapePtLon        Float   @map("shape_pt_lon")
+  shapePtSequence   Int     @map("shape_pt_sequence")
+  shapeDistTraveled Float?  @map("shape_dist_traveled")
+
+  feedSource FeedSource? @relation(fields: [feedSourceId], references: [id], onDelete: SetNull)
+
+  @@unique([feedSourceId, externalShapeId, shapePtSequence])
+  @@map("gtfs_shapes")
+}
+
+model ImportJob {
+  id           String    @id @default(uuid())
+  feedSourceId String    @map("feed_source_id")
+  status       String    @default("PENDING")
+  startedAt    DateTime  @default(now()) @map("started_at")
+  finishedAt   DateTime? @map("finished_at")
+  summary      Json?
+  error        String?
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  feedSource FeedSource @relation(fields: [feedSourceId], references: [id], onDelete: Cascade)
+
+  @@index([feedSourceId])
+  @@map("import_jobs")
+}
+
+model RouteStop {
+  id           String @id @default(uuid())
+  routeId      String @map("route_id")
+  stopId       String @map("stop_id")
+  stopSequence Int    @map("stop_sequence")
+
+  route Route @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  stop  Stop  @relation(fields: [stopId], references: [id], onDelete: Restrict)
+
+  @@unique([routeId, stopSequence])
+  @@unique([routeId, stopId])
+  @@index([routeId])
+  @@map("gtfs_route_stops")
+}

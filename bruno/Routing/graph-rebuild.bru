@@ -1,0 +1,15 @@
+meta {
+  name: Rebuild Graph
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/routing/graph/rebuild
+  body: none
+  auth: none
+}
+
+headers {
+  x-api-key: {{api_key}}
+}

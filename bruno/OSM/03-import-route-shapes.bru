@@ -1,0 +1,24 @@
+meta {
+  name: Import Route Shapes
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/internal/osm/import/route-shapes
+  body: json
+  auth: none
+}
+
+headers {
+  x-api-key: {{api_key}}
+  Authorization: Bearer {{internal_token}}
+}
+
+body:json {
+  {
+    "regionId": "{{osm_region_id}}",
+    "bbox": "{{osm_bbox}}",
+    "modes": {{osm_modes}}
+  }
+}

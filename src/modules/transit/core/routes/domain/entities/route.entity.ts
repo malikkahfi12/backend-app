@@ -1,0 +1,23 @@
+export type RouteEntity = {
+  id: string;
+  feedSourceId: string | null;
+  externalRouteId: string | null;
+  agencyId: string;
+  transitModeId: string;
+  shortName: string;
+  longName: string;
+  description: string | null;
+  color: string | null;
+  textColor: string | null;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  osmId: string | null;
+  osmType: string | null;
+  source: string | null;
+  regionId: string | null;
+  geometry?: unknown;
+  matchedOsmRouteId: string | null;
+  geometrySource: string | null;
+  geometryConfidenceScore: number | null;
+};

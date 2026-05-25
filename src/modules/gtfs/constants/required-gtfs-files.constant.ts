@@ -1,0 +1,8 @@
+export const SPRINT_8_REQUIRED_FILES = [
+  'agency.txt',
+  'stops.txt',
+  'routes.txt',
+  'trips.txt',
+  'stop_times.txt',
+  'calendar.txt',
+] as const;

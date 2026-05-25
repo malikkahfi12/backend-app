@@ -1,0 +1,7 @@
+trip_id,arrival_time,departure_time,stop_id,stop_sequence
+trip-1-north,08:00:00,08:00:00,lebak-bulus,1
+trip-1-north,08:05:00,08:05:30,fatmawati,2
+trip-1-north,08:15:00,08:15:30,bundaran-hi,3
+trip-2-south,08:00:00,08:00:00,bundaran-hi,1
+trip-2-south,08:10:00,08:10:30,fatmawati,2
+trip-2-south,08:15:00,08:15:00,lebak-bulus,3

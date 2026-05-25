@@ -1,0 +1,25 @@
+meta {
+  name: Match GTFS Geometry
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{base_url}}/internal/osm/match-gtfs-geometry
+  body: json
+  auth: none
+}
+
+headers {
+  x-api-key: {{api_key}}
+  Authorization: Bearer {{internal_token}}
+}
+
+body:json {
+  {
+    "regionId": "{{osm_region_id}}",
+    "confidenceThreshold": 50,
+    "dryRun": true,
+    "replaceLowQuality": true
+  }
+}

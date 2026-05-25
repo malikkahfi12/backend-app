@@ -1,0 +1,22 @@
+meta {
+  name: Upload GTFS
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/gtfs/import
+  body: multipartForm
+  auth: none
+}
+
+headers {
+  x-api-key: {{api_key}}
+}
+
+body:multipart-form {
+  file: @file(/Users/malik/Data/file_gtfs.zip)
+  source: TRANSJAKARTA
+  countryCode: ID
+  regionCode: JKT
+}

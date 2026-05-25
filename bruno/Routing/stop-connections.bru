@@ -1,0 +1,15 @@
+meta {
+  name: Stop Connections
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{base_url}}/routing/graph/stops/stop-001/connections
+  body: none
+  auth: none
+}
+
+headers {
+  x-api-key: {{api_key}}
+}

@@ -1,0 +1,7 @@
+export enum FeedFormat {
+  GTFS_ZIP = 'GTFS_ZIP',
+  GTFS_REALTIME_PROTOBUF = 'GTFS_REALTIME_PROTOBUF',
+  JSON = 'JSON',
+  CSV = 'CSV',
+  MANUAL = 'MANUAL',
+}

@@ -1,0 +1,16 @@
+meta {
+  name: QA Routes
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{base_url}}/internal/osm/qa/routes?regionId={{osm_region_id}}&checks={{osm_qa_checks}}&mode={{osm_mode}}
+  body: none
+  auth: none
+}
+
+headers {
+  x-api-key: {{api_key}}
+  Authorization: Bearer {{internal_token}}
+}

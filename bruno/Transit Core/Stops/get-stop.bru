@@ -1,0 +1,15 @@
+meta {
+  name: Get Stop
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url}}/stops/stop-id
+  body: none
+  auth: none
+}
+
+headers {
+  x-api-key: {{api_key}}
+}

@@ -1,0 +1,15 @@
+meta {
+  name: List Transit Modes
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/transit-modes
+  body: none
+  auth: none
+}
+
+headers {
+  x-api-key: {{api_key}}
+}

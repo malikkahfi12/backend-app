@@ -1,0 +1,10 @@
+process.env.NODE_ENV = 'test';
+process.env.PORT = '3000';
+process.env.APP_NAME = 'Transit Backend';
+process.env.API_KEY = 'test-api-key-minimum-length-24chars';
+process.env.INTERNAL_SERVICE_TOKEN = 'test-internal-token-min-length-24';
+process.env.ENABLE_INTERNAL_ENDPOINTS = 'false';
+process.env.CORS_ORIGIN = 'http://localhost:3000';
+process.env.SWAGGER_ENABLED = 'false';
+process.env.DATABASE_URL =
+  'postgresql://transit:transit@localhost:5432/transit_db?schema=public';

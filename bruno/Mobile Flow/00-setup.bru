@@ -1,0 +1,45 @@
+meta {
+  name: 00 Setup Checklist
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/health
+  body: none
+  auth: none
+}
+
+headers {
+  x-api-key: {{api_key}}
+}
+
+docs {
+  # Setup Checklist to Test Mobile API
+
+  Run these in order (use Transit Metadata, GTFS Import, and Routing folders):
+
+  ## 1. Create Country
+  POST {{base_url}}/countries  →  { "code": "ID", "name": "Indonesia" }
+  → copy id as {{country_id}}
+
+  ## 2. Create Region
+  POST {{base_url}}/regions  →  { "countryId": "{{country_id}}", "code": "jakarta", "name": "Jakarta", "timezone": "Asia/Jakarta", "defaultLocale": "id-ID" }
+  → copy id as {{region_id}}
+
+  ## 3. Create Transit Modes
+  POST {{base_url}}/transit-modes  →  { "code": "BUS", "name": "Bus" }
+  POST {{base_url}}/transit-modes  →  { "code": "MRT", "name": "MRT" }
+  POST {{base_url}}/transit-modes  →  { "code": "BRT", "name": "BRT" }
+
+  ## 4. Create Operator
+  POST {{base_url}}/operators  →  { "regionId": "{{region_id}}", "code": "transjakarta", "name": "TransJakarta", "type": "BUS" }
+
+  ## 5. Upload GTFS
+  POST {{base_url}}/gtfs/import (multipart)  →  file=@your-feed.zip, source=transjakarta, countryCode=ID, regionCode=jakarta
+
+  ## 6. Rebuild Graph
+  POST {{base_url}}/routing/graph/rebuild
+
+  ## 7. Ready! Use Mobile Flow requests below.
+}

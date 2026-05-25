@@ -1,0 +1,15 @@
+meta {
+  name: 08 Trip Shape (GeoJSON)
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{base_url}}/trips/{{trip_id}}/shape
+  body: none
+  auth: none
+}
+
+headers {
+  x-api-key: {{api_key}}
+}

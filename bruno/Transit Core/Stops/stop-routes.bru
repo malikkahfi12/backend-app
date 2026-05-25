@@ -1,0 +1,15 @@
+meta {
+  name: Stop Routes
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{base_url}}/stops/stop-id/routes
+  body: none
+  auth: none
+}
+
+headers {
+  x-api-key: {{api_key}}
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Trip Stops
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{base_url}}/trips/trip-id/stops
+  body: none
+  auth: none
+}
+
+headers {
+  x-api-key: {{api_key}}
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Search Stops
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{base_url}}/stops?q=harmoni
+  body: none
+  auth: none
+}
+
+headers {
+  x-api-key: {{api_key}}
+}
