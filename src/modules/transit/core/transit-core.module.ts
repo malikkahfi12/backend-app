@@ -54,5 +54,6 @@ import { CalendarsController } from './calendars/presentation/controllers/calend
     { provide: STOP_TIME_REPOSITORY, useClass: PrismaStopTimeRepository },
     { provide: CALENDAR_REPOSITORY, useClass: PrismaCalendarRepository },
   ],
+  exports: [StopService],
 })
 export class TransitCoreModule {}

@@ -38,6 +38,8 @@ export default tseslint.config(
       'src/modules/gtfs/**/*.ts',
       'src/modules/schedules/**/*.ts',
       'src/modules/routing/**/*.ts',
+      'src/modules/places/**/*.ts',
+      'src/modules/search/**/*.ts',
       'src/modules/transit/core/stops/**/*.ts',
       'src/modules/transit/core/trips/application/services/trip.service.ts',
       'src/modules/transit/core/routes/application/services/route.service.ts',

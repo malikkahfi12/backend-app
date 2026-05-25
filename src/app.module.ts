@@ -15,6 +15,8 @@ import { SchedulesModule } from './modules/schedules/schedules.module';
 import { RoutingModule } from './modules/routing/routing.module';
 import { TransitMetadataModule } from './modules/transit-metadata/transit-metadata.module';
 import { OsmModule } from './modules/osm/osm.module';
+import { PlacesModule } from './modules/places/places.module';
+import { SearchModule } from './modules/search/search.module';
 
 @Module({
   imports: [
@@ -35,6 +37,8 @@ import { OsmModule } from './modules/osm/osm.module';
     SchedulesModule,
     RoutingModule,
     OsmModule,
+    PlacesModule,
+    SearchModule,
   ],
   providers: [
     {
