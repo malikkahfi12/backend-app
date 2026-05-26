@@ -1,0 +1,22 @@
+meta {
+  name: Unified Search
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/search?q=bandung&lat=-6.902&lng=107.618&limit=5
+  body: none
+  auth: none
+}
+
+params:query {
+  q: bandung
+  lat: -6.902
+  lng: 107.618
+  limit: 5
+}
+
+headers {
+  x-api-key: {{api_key}}
+}
