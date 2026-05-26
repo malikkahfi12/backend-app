@@ -133,6 +133,22 @@ describe('SearchService', () => {
       );
     });
 
+    it('should deduplicate stops with the same name', async () => {
+      mockStopService.findAll.mockResolvedValue([
+        mockStop({ id: 'stop-1', name: 'Ancol' }),
+        mockStop({ id: 'stop-2', name: 'Ancol' }),
+        mockStop({ id: 'stop-3', name: 'Ancol Pintu 2' }),
+      ]);
+      mockPlacesService.search.mockResolvedValue([]);
+
+      const result = await service.aggregate('ancol');
+
+      expect(result.data.stops).toHaveLength(2);
+      expect(result.data.stops[0].name).toBe('Ancol');
+      expect(result.data.stops[1].name).toBe('Ancol Pintu 2');
+      expect(result.meta.stopCount).toBe(2);
+    });
+
     it('should pass lat/lng proximity to places search', async () => {
       mockStopService.findAll.mockResolvedValue([]);
       mockPlacesService.search.mockResolvedValue([]);
