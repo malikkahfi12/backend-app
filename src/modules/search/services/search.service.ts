@@ -58,7 +58,7 @@ export class SearchService {
 
     const stops =
       stopResult.status === 'fulfilled'
-        ? stopResult.value.map(mapStopToUnifiedResult)
+        ? dedupeByName(stopResult.value.map(mapStopToUnifiedResult))
         : [];
 
     const places = placeResult.status === 'fulfilled' ? placeResult.value : [];
@@ -96,4 +96,12 @@ function mapStopToUnifiedResult(stop: StopEntity): UnifiedStopResult {
     longitude: stop.longitude,
     type: 'stop',
   };
+}
+
+function dedupeByName<T extends { name: string }>(items: T[]): T[] {
+  return items.filter(
+    (item, i, arr) =>
+      arr.findIndex((p) => p.name.toLowerCase() === item.name.toLowerCase()) ===
+      i,
+  );
 }

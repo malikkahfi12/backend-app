@@ -106,9 +106,9 @@ describe('MaptilerGeocodingService', () => {
         json: jest.fn().mockResolvedValue({
           type: 'FeatureCollection',
           features: [
-            mockFeature({ id: '1' }),
-            mockFeature({ id: '2' }),
-            mockFeature({ id: '3' }),
+            mockFeature({ id: '1', properties: { name: 'Station A' } }),
+            mockFeature({ id: '2', properties: { name: 'Station B' } }),
+            mockFeature({ id: '3', properties: { name: 'Station C' } }),
           ],
         }),
       });
@@ -116,6 +116,26 @@ describe('MaptilerGeocodingService', () => {
       const results = await service.search('test', { limit: 2 });
 
       expect(results).toHaveLength(2);
+    });
+
+    it('should deduplicate results with the same name (case-insensitive)', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          type: 'FeatureCollection',
+          features: [
+            mockFeature({ id: 'a', properties: { name: 'Ancol' } }),
+            mockFeature({ id: 'b', properties: { name: 'ANC kol' } }),
+            mockFeature({ id: 'c', properties: { name: 'Ancol' } }),
+          ],
+        }),
+      });
+
+      const results = await service.search('ancol', { limit: 5 });
+
+      expect(results).toHaveLength(2);
+      expect(results[0].name).toBe('Ancol');
+      expect(results[1].name).toBe('ANC kol');
     });
 
     it('should include proximity and regional bbox when lat/lng provided', async () => {

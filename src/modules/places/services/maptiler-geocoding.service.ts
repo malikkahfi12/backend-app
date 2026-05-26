@@ -59,9 +59,10 @@ export class MaptilerGeocodingService {
     opts?: { lat?: number; lng?: number; limit?: number },
   ): Promise<NormalizedPlaceResult[]> {
     const limit = opts?.limit ?? 5;
+    const fetchLimit = limit * 2;
     const params = new URLSearchParams({
       key: this.apiKey,
-      limit: String(limit),
+      limit: String(fetchLimit),
     });
 
     if (opts?.lng !== undefined && opts?.lat !== undefined) {
@@ -86,8 +87,14 @@ export class MaptilerGeocodingService {
     }
 
     return data.features
-      .slice(0, limit)
-      .map((f) => this.normalizeSearchResult(f));
+      .map((f) => this.normalizeSearchResult(f))
+      .filter(
+        (r, i, arr) =>
+          arr.findIndex(
+            (p) => p.name.toLowerCase() === r.name.toLowerCase(),
+          ) === i,
+      )
+      .slice(0, limit);
   }
 
   async reverse(
