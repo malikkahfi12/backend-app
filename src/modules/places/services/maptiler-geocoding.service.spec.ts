@@ -118,11 +118,20 @@ describe('MaptilerGeocodingService', () => {
       expect(results).toHaveLength(2);
     });
 
-    it('should include proximity when lat/lng provided', async () => {
+    it('should include proximity and regional bbox when lat/lng provided', async () => {
       await service.search('test', { lat: -6.2, lng: 106.8 });
 
       const url = mockFetch.mock.calls[0][0] as string;
       expect(url).toContain('proximity=106.8%2C-6.2');
+      expect(url).toContain('bbox=105.8%2C-7.2%2C107.8%2C-5.2');
+    });
+
+    it('should not include bbox when lat/lng omitted', async () => {
+      await service.search('test');
+
+      const url = mockFetch.mock.calls[0][0] as string;
+      expect(url).not.toContain('proximity=');
+      expect(url).not.toContain('bbox=');
     });
 
     it('should use fallback name when property name is missing', async () => {

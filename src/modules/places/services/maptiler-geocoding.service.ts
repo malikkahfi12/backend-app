@@ -39,6 +39,8 @@ export interface NormalizedReverseResult {
 
 const TIMEOUT_MS = 10_000;
 
+const REGIONAL_BBOX_DEGREES = 1.0;
+
 @Injectable()
 export class MaptilerGeocodingService {
   private readonly logger = new Logger(MaptilerGeocodingService.name);
@@ -64,6 +66,12 @@ export class MaptilerGeocodingService {
 
     if (opts?.lng !== undefined && opts?.lat !== undefined) {
       params.set('proximity', `${opts.lng},${opts.lat}`);
+
+      const minLng = opts.lng - REGIONAL_BBOX_DEGREES;
+      const minLat = opts.lat - REGIONAL_BBOX_DEGREES;
+      const maxLng = opts.lng + REGIONAL_BBOX_DEGREES;
+      const maxLat = opts.lat + REGIONAL_BBOX_DEGREES;
+      params.set('bbox', `${minLng},${minLat},${maxLng},${maxLat}`);
     }
 
     const url = `${this.baseUrl}/geocoding/${encodeURIComponent(query)}.json?${params.toString()}`;
