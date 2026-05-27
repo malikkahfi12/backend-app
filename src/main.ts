@@ -6,6 +6,7 @@ import { AppModule } from './app.module';
 import { setupOpenApi } from './docs/openapi';
 import { setupApp } from './app.setup';
 import { AppConfig } from './config/app.config';
+import { normalizeRepeatedSlashes } from './common/middleware/path-normalize.middleware';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -15,6 +16,7 @@ async function bootstrap() {
   const swaggerEnabled = configService.get('swaggerEnabled', { infer: true });
   const nodeEnv = configService.get('nodeEnv', { infer: true });
 
+  app.use(normalizeRepeatedSlashes);
   app.use(helmet());
   app.use(compression());
   app.enableCors({
