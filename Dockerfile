@@ -10,6 +10,9 @@ COPY . .
 ENV DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder?schema=public
 RUN npx prisma generate
 RUN npm run build
+RUN echo "=== DIST CONTENTS ===" && ls -la dist/ || echo "dist/ MISSING"
+RUN echo "=== FIND MAIN ===" && find dist -name "main.*" 2>/dev/null || echo "NO MAIN FILES"
+RUN test -f dist/main.js && echo "OK: dist/main.js exists" || (echo "ERROR: dist/main.js NOT FOUND" && find /app -name "main.*" 2>/dev/null && exit 1)
 RUN npm prune --omit=dev
 
 FROM node:22-alpine AS runner
