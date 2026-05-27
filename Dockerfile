@@ -10,6 +10,7 @@ COPY . .
 ENV DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder?schema=public
 RUN npx prisma generate
 RUN npm run build
+RUN npx tsc prisma/seed.ts --module commonjs --target es2022 --esModuleInterop --skipLibCheck
 RUN npm prune --omit=dev
 
 FROM node:22-alpine AS runner

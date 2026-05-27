@@ -5,9 +5,14 @@ meta {
 }
 
 get {
-  url: {{base_url}}/stops/98dd6954-d6ac-4f2e-a5cf-1a610a58c5b8/routes
+  url: {{base_url}}/search?bbox=106.8002431,-6.3355497,106.9002431,-6.2355497&q=kota
   body: none
   auth: none
+}
+
+params:query {
+  bbox: 106.8002431,-6.3355497,106.9002431,-6.2355497
+  q: kota
 }
 
 headers {
