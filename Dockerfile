@@ -7,7 +7,7 @@ FROM node:22-alpine AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-ENV DATABASE_URL=postgresql://transit:transit@localhost:5432/transit_db?schema=public
+ENV DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder?schema=public
 RUN npx prisma generate
 RUN npm run build
 RUN npm prune --omit=dev
