@@ -69,11 +69,11 @@ class EnvironmentVariables {
 
   @IsString()
   @IsNotEmpty()
-  MAPTILER_API_KEY!: string;
+  MAPBOX_ACCESS_TOKEN!: string;
 
   @IsString()
   @IsNotEmpty()
-  MAPTILER_GEOCODING_BASE_URL!: string;
+  MAPBOX_GEOCODING_BASE_URL!: string;
 }
 
 export function validateEnv(

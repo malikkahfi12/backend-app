@@ -1,12 +1,12 @@
 import {
-  MaptilerGeocodingService,
+  MapboxGeocodingService,
   NormalizedReverseResult,
-} from './maptiler-geocoding.service';
+} from './mapbox-geocoding.service';
 import { ConfigService } from '@nestjs/config';
 import { AppConfig } from '@/config/app.config';
 
-describe('MaptilerGeocodingService', () => {
-  let service: MaptilerGeocodingService;
+describe('MapboxGeocodingService', () => {
+  let service: MapboxGeocodingService;
   let mockFetch: jest.Mock;
 
   const mockFeature = (overrides?: Record<string, unknown>) => ({
@@ -18,10 +18,10 @@ describe('MaptilerGeocodingService', () => {
     },
     properties: {
       name: 'Gedung Sate',
-      place_type: ['poi'],
       ...((overrides?.properties as Record<string, unknown>) ?? {}),
     },
     place_name: 'Gedung Sate, Bandung, Jawa Barat, Indonesia',
+    place_type: ['poi'],
     center: [107.618, -6.902] as [number, number],
     ...overrides,
   });
@@ -29,8 +29,8 @@ describe('MaptilerGeocodingService', () => {
   const mockConfigService = {
     get: jest.fn((key: string) => {
       const config: Record<string, string> = {
-        'maptiler.apiKey': 'test-api-key',
-        'maptiler.geocodingBaseUrl': 'https://api.maptiler.com',
+        'mapbox.accessToken': 'test-access-token',
+        'mapbox.geocodingBaseUrl': 'https://api.mapbox.com',
       };
       return config[key];
     }),
@@ -46,7 +46,7 @@ describe('MaptilerGeocodingService', () => {
       }),
     });
     global.fetch = mockFetch;
-    service = new MaptilerGeocodingService(
+    service = new MapboxGeocodingService(
       mockConfigService as unknown as ConfigService<AppConfig, true>,
     );
   });
@@ -63,7 +63,7 @@ describe('MaptilerGeocodingService', () => {
         latitude: -6.902,
         longitude: 107.618,
         type: 'poi',
-        provider: 'maptiler',
+        provider: 'mapbox',
       });
     });
 
@@ -106,9 +106,9 @@ describe('MaptilerGeocodingService', () => {
         json: jest.fn().mockResolvedValue({
           type: 'FeatureCollection',
           features: [
-            mockFeature({ id: '1', properties: { name: 'Station A' } }),
-            mockFeature({ id: '2', properties: { name: 'Station B' } }),
-            mockFeature({ id: '3', properties: { name: 'Station C' } }),
+            mockFeature({ id: '1', properties: { name: 'Station A' }, place_type: ['poi'] }),
+            mockFeature({ id: '2', properties: { name: 'Station B' }, place_type: ['poi'] }),
+            mockFeature({ id: '3', properties: { name: 'Station C' }, place_type: ['poi'] }),
           ],
         }),
       });
@@ -124,9 +124,9 @@ describe('MaptilerGeocodingService', () => {
         json: jest.fn().mockResolvedValue({
           type: 'FeatureCollection',
           features: [
-            mockFeature({ id: 'a', properties: { name: 'Ancol' } }),
-            mockFeature({ id: 'b', properties: { name: 'ANC kol' } }),
-            mockFeature({ id: 'c', properties: { name: 'Ancol' } }),
+            mockFeature({ id: 'a', properties: { name: 'Ancol' }, place_type: ['poi'] }),
+            mockFeature({ id: 'b', properties: { name: 'ANC kol' }, place_type: ['poi'] }),
+            mockFeature({ id: 'c', properties: { name: 'Ancol' }, place_type: ['poi'] }),
           ],
         }),
       });
@@ -163,6 +163,7 @@ describe('MaptilerGeocodingService', () => {
             mockFeature({
               properties: {},
               place_name: 'Fallback Name, City, Country',
+              place_type: ['place'],
             }),
           ],
         }),
@@ -171,6 +172,14 @@ describe('MaptilerGeocodingService', () => {
       const results = await service.search('test');
 
       expect(results[0].name).toBe('Fallback Name');
+    });
+
+    it('should use Mapbox v5 geocoding URL format', async () => {
+      await service.search('test');
+
+      const url = mockFetch.mock.calls[0][0] as string;
+      expect(url).toContain('/geocoding/v5/mapbox.places/');
+      expect(url).toContain('access_token=test-access-token');
     });
   });
 
@@ -187,7 +196,7 @@ describe('MaptilerGeocodingService', () => {
         address: 'Gedung Sate, Bandung, Jawa Barat, Indonesia',
         latitude: -6.902,
         longitude: 107.618,
-        provider: 'maptiler',
+        provider: 'mapbox',
       });
     });
 
