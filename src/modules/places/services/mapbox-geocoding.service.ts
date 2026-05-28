@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppConfig } from '@/config/app.config';
 
-interface MapTilerFeature {
+interface MapboxFeature {
   type: 'Feature';
   id: string;
   geometry: {
@@ -11,12 +11,13 @@ interface MapTilerFeature {
   };
   properties: Record<string, unknown>;
   place_name: string;
+  place_type: string[];
   center: [number, number];
 }
 
-interface MapTilerGeocodingResponse {
+interface MapboxGeocodingResponse {
   type: 'FeatureCollection';
-  features: MapTilerFeature[];
+  features: MapboxFeature[];
 }
 
 export interface NormalizedPlaceResult {
@@ -42,14 +43,14 @@ const TIMEOUT_MS = 10_000;
 const REGIONAL_BBOX_DEGREES = 1.0;
 
 @Injectable()
-export class MaptilerGeocodingService {
-  private readonly logger = new Logger(MaptilerGeocodingService.name);
-  private readonly apiKey: string;
+export class MapboxGeocodingService {
+  private readonly logger = new Logger(MapboxGeocodingService.name);
+  private readonly accessToken: string;
   private readonly baseUrl: string;
 
   constructor(configService: ConfigService<AppConfig, true>) {
-    this.apiKey = configService.get('maptiler.apiKey', { infer: true });
-    this.baseUrl = configService.get('maptiler.geocodingBaseUrl', {
+    this.accessToken = configService.get('mapbox.accessToken', { infer: true });
+    this.baseUrl = configService.get('mapbox.geocodingBaseUrl', {
       infer: true,
     });
   }
@@ -61,7 +62,7 @@ export class MaptilerGeocodingService {
     const limit = opts?.limit ?? 5;
     const fetchLimit = limit * 2;
     const params = new URLSearchParams({
-      key: this.apiKey,
+      access_token: this.accessToken,
       limit: String(fetchLimit),
     });
 
@@ -75,7 +76,7 @@ export class MaptilerGeocodingService {
       params.set('bbox', `${minLng},${minLat},${maxLng},${maxLat}`);
     }
 
-    const url = `${this.baseUrl}/geocoding/${encodeURIComponent(query)}.json?${params.toString()}`;
+    const url = `${this.baseUrl}/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?${params.toString()}`;
 
     this.logger.log(`Geocoding search: "${query}" (limit=${limit})`);
 
@@ -101,8 +102,8 @@ export class MaptilerGeocodingService {
     lat: number,
     lng: number,
   ): Promise<NormalizedReverseResult | null> {
-    const params = new URLSearchParams({ key: this.apiKey });
-    const url = `${this.baseUrl}/geocoding/${lng},${lat}.json?${params.toString()}`;
+    const params = new URLSearchParams({ access_token: this.accessToken });
+    const url = `${this.baseUrl}/geocoding/v5/mapbox.places/${lng},${lat}.json?${params.toString()}`;
 
     this.logger.log(`Reverse geocoding: (${lat}, ${lng})`);
 
@@ -116,15 +117,15 @@ export class MaptilerGeocodingService {
     return this.normalizeReverseResult(data.features[0]);
   }
 
-  private normalizeSearchResult(f: MapTilerFeature): NormalizedPlaceResult {
+  private normalizeSearchResult(f: MapboxFeature): NormalizedPlaceResult {
     const [lng, lat] = f.center;
     const name =
       (f.properties?.['name'] as string) ??
       f.place_name?.split(',')[0]?.trim() ??
       'Unknown';
     const placeType =
-      (Array.isArray(f.properties?.['place_type'])
-        ? String((f.properties?.['place_type'] as string[])[0])
+      (Array.isArray(f.place_type)
+        ? String(f.place_type[0])
         : 'place') || 'place';
 
     return {
@@ -134,11 +135,11 @@ export class MaptilerGeocodingService {
       latitude: lat,
       longitude: lng,
       type: placeType,
-      provider: 'maptiler',
+      provider: 'mapbox',
     };
   }
 
-  private normalizeReverseResult(f: MapTilerFeature): NormalizedReverseResult {
+  private normalizeReverseResult(f: MapboxFeature): NormalizedReverseResult {
     const [lng, lat] = f.center;
     const name =
       (f.properties?.['name'] as string) ??
@@ -150,13 +151,13 @@ export class MaptilerGeocodingService {
       address: f.place_name ?? '',
       latitude: lat,
       longitude: lng,
-      provider: 'maptiler',
+      provider: 'mapbox',
     };
   }
 
   private async fetchWithTimeout(
     url: string,
-  ): Promise<MapTilerGeocodingResponse | null> {
+  ): Promise<MapboxGeocodingResponse | null> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
@@ -167,20 +168,20 @@ export class MaptilerGeocodingService {
 
       if (!response.ok) {
         this.logger.error(
-          `MapTiler API returned ${response.status}: ${await response.text().catch(() => 'unknown error')}`,
+          `Mapbox API returned ${response.status}: ${await response.text().catch(() => 'unknown error')}`,
         );
         return null;
       }
 
-      return (await response.json()) as MapTilerGeocodingResponse;
+      return (await response.json()) as MapboxGeocodingResponse;
     } catch (error) {
       if ((error as Error).name === 'AbortError') {
         this.logger.error(
-          `MapTiler API request timed out after ${TIMEOUT_MS}ms`,
+          `Mapbox API request timed out after ${TIMEOUT_MS}ms`,
         );
       } else {
         this.logger.error(
-          `MapTiler API request failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          `Mapbox API request failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
         );
       }
       return null;

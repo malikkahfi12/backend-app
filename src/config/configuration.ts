@@ -21,9 +21,9 @@ export default (): AppConfig => ({
       'https://overpass-api.de/api/interpreter',
     timeout: Number(process.env.OVERPASS_TIMEOUT ?? 30000),
   },
-  maptiler: {
-    apiKey: process.env.MAPTILER_API_KEY as string,
+  mapbox: {
+    accessToken: process.env.MAPBOX_ACCESS_TOKEN as string,
     geocodingBaseUrl:
-      process.env.MAPTILER_GEOCODING_BASE_URL ?? 'https://api.maptiler.com',
+      process.env.MAPBOX_GEOCODING_BASE_URL ?? 'https://api.mapbox.com',
   },
 });
