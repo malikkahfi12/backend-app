@@ -1,4 +1,6 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { AppConfig } from '../../../config/app.config';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { RoutingGraphService } from '../graph/routing-graph.service';
 import {
@@ -12,6 +14,10 @@ import { RouteOptionDto } from '../dto/route-option.dto';
 import { RouteLegDto } from '../dto/route-leg.dto';
 import { RoutingGraph, RoutingGraphNode } from '../graph/routing-graph.types';
 import { RoutingEdgeType } from '../enums/routing-edge-type.enum';
+import {
+  WALK_GEOMETRY_MAPBOX_MIN_DISTANCE_METERS,
+  MAPBOX_DIRECTIONS_TIMEOUT_MS,
+} from '../constants/routing.constants';
 
 interface StopCandidate {
   stopId: string;
@@ -41,11 +47,21 @@ const MAX_ROUTE_OPTIONS = 3;
 @Injectable()
 export class RoutingSearchService {
   private readonly logger = new Logger(RoutingSearchService.name);
+  private readonly mapboxAccessToken: string;
+  private readonly mapboxBaseUrl: string;
 
   constructor(
     private readonly routingGraphService: RoutingGraphService,
     private readonly prismaService: PrismaService,
-  ) {}
+    configService: ConfigService<AppConfig, true>,
+  ) {
+    this.mapboxAccessToken = configService.get('mapbox.accessToken', {
+      infer: true,
+    });
+    this.mapboxBaseUrl = configService.get('mapbox.geocodingBaseUrl', {
+      infer: true,
+    });
+  }
 
   async searchRoute(
     fromStopId: string,
@@ -360,11 +376,87 @@ export class RoutingSearchService {
     }
   }
 
-  private resolveWalkGeometry(
+  private async resolveWalkGeometry(
     leg: RouteLegDto,
     graph: RoutingGraph,
-  ): { type: 'LineString'; coordinates: number[][] } | undefined {
-    return this.straightLineGeometry(leg, graph);
+  ): Promise<{ type: 'LineString'; coordinates: number[][] } | undefined> {
+    if (
+      leg.distanceMeters != null &&
+      leg.distanceMeters < WALK_GEOMETRY_MAPBOX_MIN_DISTANCE_METERS
+    ) {
+      return this.straightLineGeometry(leg, graph);
+    }
+
+    return (
+      (await this.fetchMapboxWalkingGeometry(leg, graph)) ??
+      this.straightLineGeometry(leg, graph)
+    );
+  }
+
+  private async fetchMapboxWalkingGeometry(
+    leg: RouteLegDto,
+    graph: RoutingGraph,
+  ): Promise<{ type: 'LineString'; coordinates: number[][] } | undefined> {
+    const fromNode = graph.nodes.get(leg.fromStopId ?? '');
+    const toNode = graph.nodes.get(leg.toStopId ?? '');
+
+    if (
+      !fromNode ||
+      !toNode ||
+      fromNode.latitude == null ||
+      fromNode.longitude == null ||
+      toNode.latitude == null ||
+      toNode.longitude == null
+    ) {
+      return undefined;
+    }
+
+    const coords = `${fromNode.longitude},${fromNode.latitude};${toNode.longitude},${toNode.latitude}`;
+    const url = `${this.mapboxBaseUrl}/directions/v5/mapbox/walking/${coords}?geometries=geojson&access_token=${encodeURIComponent(this.mapboxAccessToken)}`;
+
+    const controller = new AbortController();
+    const timer = setTimeout(
+      () => controller.abort(),
+      MAPBOX_DIRECTIONS_TIMEOUT_MS,
+    );
+
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+
+      if (!response.ok) {
+        this.logger.warn(
+          `Mapbox Directions returned ${response.status}: ${await response.text().catch(() => 'unknown error')}`,
+        );
+        return undefined;
+      }
+
+      const data = await response.json();
+
+      if (
+        data?.code !== 'Ok' ||
+        !data?.routes?.length ||
+        !data.routes[0]?.geometry
+      ) {
+        this.logger.warn(
+          `Mapbox Directions returned code=${data?.code} or no routes`,
+        );
+        return undefined;
+      }
+
+      return data.routes[0].geometry as {
+        type: 'LineString';
+        coordinates: number[][];
+      };
+    } catch (error) {
+      if ((error as Error).name !== 'AbortError') {
+        this.logger.warn(
+          `Mapbox walking directions failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        );
+      }
+      return undefined;
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   private async resolveOsmLegGeometry(
