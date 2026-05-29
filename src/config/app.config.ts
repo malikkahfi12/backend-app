@@ -1,3 +1,5 @@
+import { AuthConfig } from './auth.config';
+
 export type NodeEnvironment = 'development' | 'test' | 'staging' | 'production';
 
 export interface AppConfig {
@@ -9,6 +11,7 @@ export interface AppConfig {
   enableInternalEndpoints: boolean;
   corsOrigin: string;
   swaggerEnabled: boolean;
+  auth: AuthConfig;
   database: {
     url: string;
   };

@@ -5,7 +5,9 @@ import {
   IsInt,
   IsNotEmpty,
   IsString,
+  Matches,
   Min,
+  MinLength,
   validateSync,
 } from 'class-validator';
 import type { NodeEnvironment } from './app.config';
@@ -18,6 +20,9 @@ const environments: NodeEnvironment[] = [
 ];
 
 const MIN_SECRET_LENGTH = 24;
+const MIN_JWT_SECRET_LENGTH_DEV = 16;
+const MIN_JWT_SECRET_LENGTH_PROD = 32;
+const JWT_EXPIRY_REGEX = /^\d+[smhd]$/;
 
 class EnvironmentVariables {
   @IsEnum(environments)
@@ -49,6 +54,22 @@ class EnvironmentVariables {
 
   @IsIn(['true', 'false'])
   SWAGGER_ENABLED!: string;
+
+  @IsString()
+  @MinLength(MIN_JWT_SECRET_LENGTH_DEV)
+  JWT_ACCESS_SECRET!: string;
+
+  @IsString()
+  @Matches(JWT_EXPIRY_REGEX)
+  JWT_ACCESS_EXPIRES_IN!: string;
+
+  @IsString()
+  @MinLength(MIN_JWT_SECRET_LENGTH_DEV)
+  JWT_REFRESH_SECRET!: string;
+
+  @IsString()
+  @Matches(JWT_EXPIRY_REGEX)
+  JWT_REFRESH_EXPIRES_IN!: string;
 
   @IsString()
   @IsNotEmpty()
@@ -110,6 +131,24 @@ export function validateEnv(
         `INTERNAL_SERVICE_TOKEN must be at least ${MIN_SECRET_LENGTH} characters when ENABLE_INTERNAL_ENDPOINTS is true`,
       );
     }
+  }
+
+  if (
+    env === 'production' &&
+    validatedConfig.JWT_ACCESS_SECRET.length < MIN_JWT_SECRET_LENGTH_PROD
+  ) {
+    throw new Error(
+      `JWT_ACCESS_SECRET must be at least ${MIN_JWT_SECRET_LENGTH_PROD} characters in production`,
+    );
+  }
+
+  if (
+    env === 'production' &&
+    validatedConfig.JWT_REFRESH_SECRET.length < MIN_JWT_SECRET_LENGTH_PROD
+  ) {
+    throw new Error(
+      `JWT_REFRESH_SECRET must be at least ${MIN_JWT_SECRET_LENGTH_PROD} characters in production`,
+    );
   }
 
   return validatedConfig;

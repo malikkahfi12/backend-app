@@ -9,6 +9,12 @@ export default (): AppConfig => ({
   enableInternalEndpoints: process.env.ENABLE_INTERNAL_ENDPOINTS === 'true',
   corsOrigin: process.env.CORS_ORIGIN as string,
   swaggerEnabled: process.env.SWAGGER_ENABLED === 'true',
+  auth: {
+    accessSecret: process.env.JWT_ACCESS_SECRET as string,
+    accessExpiresIn: (process.env.JWT_ACCESS_EXPIRES_IN ?? '15m') as string,
+    refreshSecret: process.env.JWT_REFRESH_SECRET as string,
+    refreshExpiresIn: (process.env.JWT_REFRESH_EXPIRES_IN ?? '30d') as string,
+  },
   database: {
     url: process.env.DATABASE_URL as string,
   },
