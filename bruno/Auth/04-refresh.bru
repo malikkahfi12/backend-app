@@ -1,0 +1,46 @@
+meta {
+  name: 04 Refresh
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{base_url}}/auth/refresh
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "refreshToken": "{{refresh_token}}"
+  }
+}
+
+docs {
+  # 04 Refresh — Rotate Refresh Token
+
+  Exchanges a valid refresh token for new access + refresh tokens.
+  The old refresh token is revoked atomically (rotation prevents reuse).
+
+  ## Response
+  {
+    "success": true,
+    "data": {
+      "accessToken": "eyJhbG...",
+      "refreshToken": "dGVzdC..."
+    },
+    "meta": { "accessTokenExpiresIn": 900 }
+  }
+
+  ## After this request:
+  1. Copy `data.accessToken` → {{access_token}}
+  2. Copy `data.refreshToken` → {{refresh_token}}
+
+  ## Strategy
+  Call every 14 minutes (before the 15-min access token expires).
+  The refresh token lasts 90 days. Re-login after that.
+}

@@ -1,0 +1,49 @@
+meta {
+  name: 00 Register
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/auth/register
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "username": "malik",
+    "displayName": "Malik",
+    "publicKey": "IADkYx5hPFZe5ckSnBCctH7DYF_vbgMjJeI1zQORrRI",
+    "deviceName": "iPhone 17 Pro",
+    "platform": "ios"
+  }
+}
+
+docs {
+  # 00 Register — Passwordless Device Registration
+
+  Creates user + device + returns access & refresh tokens.
+  No email/password needed. Uses Ed25519 public key.
+
+  ## Response
+  {
+    "success": true,
+    "data": {
+      "user": { ... },
+      "device": { ... },
+      "accessToken": "eyJhbG...",
+      "refreshToken": "dGVzdC..."
+    },
+    "meta": { "accessTokenExpiresIn": 900 }
+  }
+
+  ## After this request:
+  1. Copy `data.device.id` → {{device_id}}
+  2. Copy `data.accessToken` → {{access_token}}
+  3. Copy `data.refreshToken` → {{refresh_token}}
+}

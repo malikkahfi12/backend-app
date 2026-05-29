@@ -17,6 +17,7 @@ import { TransitMetadataModule } from './modules/transit-metadata/transit-metada
 import { OsmModule } from './modules/osm/osm.module';
 import { PlacesModule } from './modules/places/places.module';
 import { SearchModule } from './modules/search/search.module';
+import { AuthModule } from './modules/auth/auth.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { SearchModule } from './modules/search/search.module';
     DatabaseModule,
     RedisModule,
     SecurityModule,
+    AuthModule,
     HealthModule,
     TransitMetadataModule,
     TransitCoreModule,
