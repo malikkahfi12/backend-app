@@ -14,7 +14,6 @@ import { GtfsModule } from './modules/gtfs/gtfs.module';
 import { SchedulesModule } from './modules/schedules/schedules.module';
 import { RoutingModule } from './modules/routing/routing.module';
 import { TransitMetadataModule } from './modules/transit-metadata/transit-metadata.module';
-import { OsmModule } from './modules/osm/osm.module';
 import { PlacesModule } from './modules/places/places.module';
 import { SearchModule } from './modules/search/search.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -38,7 +37,6 @@ import { AuthModule } from './modules/auth/auth.module';
     GtfsModule,
     SchedulesModule,
     RoutingModule,
-    OsmModule,
     PlacesModule,
     SearchModule,
   ],
