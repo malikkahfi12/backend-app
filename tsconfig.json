@@ -2,9 +2,8 @@
   "compilerOptions": {
     "module": "nodenext",
     "moduleResolution": "nodenext",
-    "baseUrl": "./src",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./src/*"]
     },
     "types": ["jest", "node"],
     "resolvePackageJsonExports": true,
