@@ -11,11 +11,12 @@ const CHALLENGE_BASE64URL = 'dGhpcyBpcyBhIHJhbmRvbSBjaGFsbGVuZ2U';
 const SIGNATURE_BASE64URL = 'c2lnbmF0dXJlLWJhc2U2NHVybA';
 const PUBLIC_KEY = 'IADkYx5hPFZe5ckSnBCctH7DYF_vbgMjJeI1zQORrRI';
 
-jest.mock('@noble/ed25519', () => ({
-  verify: jest.fn(),
+jest.mock('sodium-native', () => ({
+  crypto_sign_verify_detached: jest.fn(),
+  crypto_sign_PUBLICKEYBYTES: 32,
 }));
 
-import * as ed25519 from '@noble/ed25519';
+import sodium from 'sodium-native';
 
 const mockUser = {
   id: 'user-uuid',
@@ -170,7 +171,7 @@ function makeService(
 
 describe('AuthService', () => {
   beforeEach(() => {
-    (ed25519.verify as jest.Mock).mockReturnValue(true);
+    (sodium.crypto_sign_verify_detached as jest.Mock).mockReturnValue(true);
   });
 
   describe('registerDevice', () => {
@@ -346,7 +347,7 @@ describe('AuthService', () => {
     });
 
     it('throws INVALID_SIGNATURE when Ed25519 verification fails', async () => {
-      (ed25519.verify as jest.Mock).mockReturnValue(false);
+      (sodium.crypto_sign_verify_detached as jest.Mock).mockReturnValue(false);
 
       const service = makeService({
         challengeFindUnique: jest

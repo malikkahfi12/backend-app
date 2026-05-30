@@ -1,5 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import * as ed25519 from '@noble/ed25519';
+import sodium from 'sodium-native';
 import { Prisma } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
@@ -538,7 +538,7 @@ export class AuthService {
         publicKeyBase64url.replace(/-/g, '+').replace(/_/g, '/'),
         'base64',
       );
-      return ed25519.verify(signature, message, publicKey);
+      return sodium.crypto_sign_verify_detached(signature, message, publicKey);
     } catch {
       return false;
     }
@@ -565,7 +565,7 @@ export class AuthService {
         key.replace(/-/g, '+').replace(/_/g, '/'),
         'base64',
       );
-      return raw.length === 32;
+      return raw.length === sodium.crypto_sign_PUBLICKEYBYTES;
     } catch {
       return false;
     }
