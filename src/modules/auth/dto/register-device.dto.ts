@@ -1,10 +1,19 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsIn, IsNotEmpty, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import {
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class RegisterDeviceDto {
   @ApiProperty({
-    description: 'Unique username (lowercase letters, numbers, underscore, dot)',
+    description:
+      'Unique username (lowercase letters, numbers, underscore, dot)',
     example: 'malik',
   })
   @Transform(({ value }) =>
@@ -29,8 +38,7 @@ export class RegisterDeviceDto {
   displayName!: string;
 
   @ApiProperty({
-    description:
-      'Ed25519 public key encoded as base64url or base64',
+    description: 'Ed25519 public key encoded as base64url or base64',
     example: 'IADkYx5hPFZe5ckSnBCctH7DYF_vbgMjJeI1zQORrRI',
   })
   @IsString()

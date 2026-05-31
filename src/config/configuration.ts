@@ -11,9 +11,9 @@ export default (): AppConfig => ({
   swaggerEnabled: process.env.SWAGGER_ENABLED === 'true',
   auth: {
     accessSecret: process.env.JWT_ACCESS_SECRET as string,
-    accessExpiresIn: (process.env.JWT_ACCESS_EXPIRES_IN ?? '15m') as string,
+    accessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN ?? '15m',
     refreshSecret: process.env.JWT_REFRESH_SECRET as string,
-    refreshExpiresIn: (process.env.JWT_REFRESH_EXPIRES_IN ?? '30d') as string,
+    refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN ?? '30d',
   },
   database: {
     url: process.env.DATABASE_URL as string,
@@ -21,9 +21,8 @@ export default (): AppConfig => ({
   redis: {
     url: process.env.REDIS_URL as string,
   },
-  maptiler: {
-    apiKey: process.env.MAPTILER_API_KEY as string,
-    geocodingBaseUrl:
-      process.env.MAPTILER_GEOCODING_BASE_URL ?? 'https://api.maptiler.com',
+  stadiamaps: {
+    apiKey: process.env.STADIAMAPS_API_KEY as string,
+    baseUrl: process.env.STADIAMAPS_BASE_URL ?? 'https://api.stadiamaps.com',
   },
 });

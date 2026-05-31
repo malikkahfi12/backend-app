@@ -1,8 +1,4 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  Injectable,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
@@ -52,11 +48,7 @@ export class JwtAuthGuard implements CanActivate {
     });
 
     if (!user || !user.isActive) {
-      throw new AuthException(
-        'USER_INACTIVE',
-        'User account is inactive',
-        401,
-      );
+      throw new AuthException('USER_INACTIVE', 'User account is inactive', 401);
     }
 
     const currentUser: CurrentUserPayload = {

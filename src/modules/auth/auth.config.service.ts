@@ -4,9 +4,7 @@ import { AppConfig } from '../../config/app.config';
 
 @Injectable()
 export class AuthConfigService {
-  constructor(
-    private readonly configService: ConfigService<AppConfig, true>,
-  ) {}
+  constructor(private readonly configService: ConfigService<AppConfig, true>) {}
 
   getAccessTokenSecret(): string {
     return this.configService.get('auth.accessSecret', { infer: true });

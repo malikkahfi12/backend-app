@@ -18,8 +18,8 @@ export interface AppConfig {
   redis: {
     url: string;
   };
-  maptiler: {
+  stadiamaps: {
     apiKey: string;
-    geocodingBaseUrl: string;
+    baseUrl: string;
   };
 }

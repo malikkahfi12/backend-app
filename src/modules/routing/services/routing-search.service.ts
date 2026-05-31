@@ -15,8 +15,8 @@ import { RouteLegDto } from '../dto/route-leg.dto';
 import { RoutingGraph, RoutingGraphNode } from '../graph/routing-graph.types';
 import { RoutingEdgeType } from '../enums/routing-edge-type.enum';
 import {
-  WALK_GEOMETRY_MAPTILER_MIN_DISTANCE_METERS,
-  MAPTILER_DIRECTIONS_TIMEOUT_MS,
+  WALK_GEOMETRY_STADIAMAPS_MIN_DISTANCE_METERS,
+  STADIAMAPS_DIRECTIONS_TIMEOUT_MS,
 } from '../constants/routing.constants';
 
 interface StopCandidate {
@@ -47,18 +47,18 @@ const MAX_ROUTE_OPTIONS = 3;
 @Injectable()
 export class RoutingSearchService {
   private readonly logger = new Logger(RoutingSearchService.name);
-  private readonly maptilerApiKey: string;
-  private readonly maptilerBaseUrl: string;
+  private readonly stadiamapsApiKey: string;
+  private readonly stadiamapsBaseUrl: string;
 
   constructor(
     private readonly routingGraphService: RoutingGraphService,
     private readonly prismaService: PrismaService,
     configService: ConfigService<AppConfig, true>,
   ) {
-    this.maptilerApiKey = configService.get('maptiler.apiKey', {
+    this.stadiamapsApiKey = configService.get('stadiamaps.apiKey', {
       infer: true,
     });
-    this.maptilerBaseUrl = configService.get('maptiler.geocodingBaseUrl', {
+    this.stadiamapsBaseUrl = configService.get('stadiamaps.baseUrl', {
       infer: true,
     });
   }
@@ -382,18 +382,18 @@ export class RoutingSearchService {
   ): Promise<{ type: 'LineString'; coordinates: number[][] } | undefined> {
     if (
       leg.distanceMeters != null &&
-      leg.distanceMeters < WALK_GEOMETRY_MAPTILER_MIN_DISTANCE_METERS
+      leg.distanceMeters < WALK_GEOMETRY_STADIAMAPS_MIN_DISTANCE_METERS
     ) {
       return this.straightLineGeometry(leg, graph);
     }
 
     return (
-      (await this.fetchMaptilerWalkingGeometry(leg, graph)) ??
+      (await this.fetchStadiaMapsWalkingGeometry(leg, graph)) ??
       this.straightLineGeometry(leg, graph)
     );
   }
 
-  private async fetchMaptilerWalkingGeometry(
+  private async fetchStadiaMapsWalkingGeometry(
     leg: RouteLegDto,
     graph: RoutingGraph,
   ): Promise<{ type: 'LineString'; coordinates: number[][] } | undefined> {
@@ -411,52 +411,97 @@ export class RoutingSearchService {
       return undefined;
     }
 
-    const coords = `${fromNode.longitude},${fromNode.latitude};${toNode.longitude},${toNode.latitude}`;
-    const url = `${this.maptilerBaseUrl}/routes/walking/${coords}?geometries=geojson&key=${encodeURIComponent(this.maptilerApiKey)}`;
+    const url = `${this.stadiamapsBaseUrl}/route/v1?api_key=${encodeURIComponent(this.stadiamapsApiKey)}`;
+    const body = JSON.stringify({
+      locations: [
+        { lat: fromNode.latitude, lon: fromNode.longitude },
+        { lat: toNode.latitude, lon: toNode.longitude },
+      ],
+      costing: 'pedestrian',
+      directions_type: 'none',
+      shape_format: 'polyline6',
+    });
 
     const controller = new AbortController();
     const timer = setTimeout(
       () => controller.abort(),
-      MAPTILER_DIRECTIONS_TIMEOUT_MS,
+      STADIAMAPS_DIRECTIONS_TIMEOUT_MS,
     );
 
     try {
-      const response = await fetch(url, { signal: controller.signal });
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        signal: controller.signal,
+      });
 
       if (!response.ok) {
         this.logger.warn(
-          `MapTiler Directions returned ${response.status}: ${await response.text().catch(() => 'unknown error')}`,
+          `Stadia Maps Directions returned ${response.status}: ${await response.text().catch(() => 'unknown error')}`,
         );
         return undefined;
       }
 
       const data = await response.json();
 
-      if (
-        data?.code !== 'Ok' ||
-        !data?.routes?.length ||
-        !data.routes[0]?.geometry
-      ) {
-        this.logger.warn(
-          `MapTiler Directions returned code=${data?.code} or no routes`,
-        );
+      const shape = data?.trip?.legs?.[0]?.shape;
+      if (!shape || typeof shape !== 'string') {
+        this.logger.warn(`Stadia Maps Directions returned no trip leg shape`);
         return undefined;
       }
 
-      return data.routes[0].geometry as {
-        type: 'LineString';
-        coordinates: number[][];
-      };
+      const coordinates = this.decodePolyline6(shape);
+      if (!coordinates.length) {
+        this.logger.warn(`Stadia Maps Directions returned invalid geometry`);
+        return undefined;
+      }
+
+      return { type: 'LineString', coordinates };
     } catch (error) {
       if ((error as Error).name !== 'AbortError') {
         this.logger.warn(
-          `MapTiler walking directions failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          `Stadia Maps walking directions failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
         );
       }
       return undefined;
     } finally {
       clearTimeout(timer);
     }
+  }
+
+  private decodePolyline6(encoded: string): number[][] {
+    const coordinates: number[][] = [];
+    let lat = 0;
+    let lon = 0;
+    let i = 0;
+
+    while (i < encoded.length) {
+      let result = 0;
+      let shift = 0;
+      let byte: number;
+      do {
+        byte = encoded.charCodeAt(i++) - 63;
+        result |= (byte & 0x1f) << shift;
+        shift += 5;
+      } while (byte >= 0x20);
+      const deltaLat = result & 1 ? ~(result >> 1) : result >> 1;
+
+      result = 0;
+      shift = 0;
+      do {
+        byte = encoded.charCodeAt(i++) - 63;
+        result |= (byte & 0x1f) << shift;
+        shift += 5;
+      } while (byte >= 0x20);
+      const deltaLon = result & 1 ? ~(result >> 1) : result >> 1;
+
+      lat += deltaLat;
+      lon += deltaLon;
+      coordinates.push([lon / 1e6, lat / 1e6]);
+    }
+
+    return coordinates;
   }
 
   private async resolveOsmLegGeometry(

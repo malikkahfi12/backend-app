@@ -2,22 +2,18 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppConfig } from '@/config/app.config';
 
-interface MapTilerFeature {
+interface StadiaMapsFeature {
   type: 'Feature';
-  id: string;
   geometry: {
     type: 'Point';
     coordinates: [number, number];
   };
   properties: Record<string, unknown>;
-  place_name: string;
-  place_type: string[];
-  center: [number, number];
 }
 
-interface MapTilerGeocodingResponse {
+interface StadiaMapsGeocodingResponse {
   type: 'FeatureCollection';
-  features: MapTilerFeature[];
+  features: StadiaMapsFeature[];
 }
 
 export interface NormalizedPlaceResult {
@@ -43,14 +39,14 @@ const TIMEOUT_MS = 10_000;
 const REGIONAL_BBOX_DEGREES = 1.0;
 
 @Injectable()
-export class MapTilerGeocodingService {
-  private readonly logger = new Logger(MapTilerGeocodingService.name);
+export class StadiaMapsGeocodingService {
+  private readonly logger = new Logger(StadiaMapsGeocodingService.name);
   private readonly apiKey: string;
   private readonly baseUrl: string;
 
   constructor(configService: ConfigService<AppConfig, true>) {
-    this.apiKey = configService.get('maptiler.apiKey', { infer: true });
-    this.baseUrl = configService.get('maptiler.geocodingBaseUrl', {
+    this.apiKey = configService.get('stadiamaps.apiKey', { infer: true });
+    this.baseUrl = configService.get('stadiamaps.baseUrl', {
       infer: true,
     });
   }
@@ -62,21 +58,26 @@ export class MapTilerGeocodingService {
     const limit = opts?.limit ?? 5;
     const fetchLimit = limit * 2;
     const params = new URLSearchParams({
-      key: this.apiKey,
-      limit: String(fetchLimit),
+      api_key: this.apiKey,
+      text: query,
+      size: String(fetchLimit),
     });
 
     if (opts?.lng !== undefined && opts?.lat !== undefined) {
-      params.set('proximity', `${opts.lng},${opts.lat}`);
+      params.set('focus.point.lon', String(opts.lng));
+      params.set('focus.point.lat', String(opts.lat));
 
       const minLng = opts.lng - REGIONAL_BBOX_DEGREES;
       const minLat = opts.lat - REGIONAL_BBOX_DEGREES;
       const maxLng = opts.lng + REGIONAL_BBOX_DEGREES;
       const maxLat = opts.lat + REGIONAL_BBOX_DEGREES;
-      params.set('bbox', `${minLng},${minLat},${maxLng},${maxLat}`);
+      params.set('boundary.rect.min_lon', String(minLng));
+      params.set('boundary.rect.max_lon', String(maxLng));
+      params.set('boundary.rect.min_lat', String(minLat));
+      params.set('boundary.rect.max_lat', String(maxLat));
     }
 
-    const url = `${this.baseUrl}/geocoding/${encodeURIComponent(query)}.json?${params.toString()}`;
+    const url = `${this.baseUrl}/geocoding/v1/search?${params.toString()}`;
 
     this.logger.log(`Geocoding search: "${query}" (limit=${limit})`);
 
@@ -102,8 +103,12 @@ export class MapTilerGeocodingService {
     lat: number,
     lng: number,
   ): Promise<NormalizedReverseResult | null> {
-    const params = new URLSearchParams({ key: this.apiKey });
-    const url = `${this.baseUrl}/geocoding/${lng},${lat}.json?${params.toString()}`;
+    const params = new URLSearchParams({
+      api_key: this.apiKey,
+      'point.lat': String(lat),
+      'point.lon': String(lng),
+    });
+    const url = `${this.baseUrl}/geocoding/v1/reverse?${params.toString()}`;
 
     this.logger.log(`Reverse geocoding: (${lat}, ${lng})`);
 
@@ -117,47 +122,46 @@ export class MapTilerGeocodingService {
     return this.normalizeReverseResult(data.features[0]);
   }
 
-  private normalizeSearchResult(f: MapTilerFeature): NormalizedPlaceResult {
-    const [lng, lat] = f.center;
-    const name =
-      (f.properties?.['name'] as string) ??
-      f.place_name?.split(',')[0]?.trim() ??
-      'Unknown';
-    const placeType =
-      (Array.isArray(f.place_type)
-        ? String(f.place_type[0])
-        : 'place') || 'place';
+  private normalizeSearchResult(f: StadiaMapsFeature): NormalizedPlaceResult {
+    const [lng, lat] = f.geometry.coordinates;
+    const props = f.properties ?? {};
+    const name = (props.name as string) ?? 'Unknown';
+    const address =
+      (props.formatted_address_line as string) ?? (props.label as string) ?? '';
+    const type = (props.layer as string) ?? 'place';
 
     return {
-      id: `place:${f.id ?? ''}`,
+      id: `place:${(props.gid as string) ?? ''}`,
       name,
-      address: f.place_name ?? '',
+      address,
       latitude: lat,
       longitude: lng,
-      type: placeType,
-      provider: 'maptiler',
+      type,
+      provider: 'stadiamaps',
     };
   }
 
-  private normalizeReverseResult(f: MapTilerFeature): NormalizedReverseResult {
-    const [lng, lat] = f.center;
-    const name =
-      (f.properties?.['name'] as string) ??
-      f.place_name?.split(',')[0]?.trim() ??
-      'Unknown';
+  private normalizeReverseResult(
+    f: StadiaMapsFeature,
+  ): NormalizedReverseResult {
+    const [lng, lat] = f.geometry.coordinates;
+    const props = f.properties ?? {};
+    const name = (props.name as string) ?? 'Unknown';
+    const address =
+      (props.formatted_address_line as string) ?? (props.label as string) ?? '';
 
     return {
       name,
-      address: f.place_name ?? '',
+      address,
       latitude: lat,
       longitude: lng,
-      provider: 'maptiler',
+      provider: 'stadiamaps',
     };
   }
 
   private async fetchWithTimeout(
     url: string,
-  ): Promise<MapTilerGeocodingResponse | null> {
+  ): Promise<StadiaMapsGeocodingResponse | null> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
@@ -168,20 +172,20 @@ export class MapTilerGeocodingService {
 
       if (!response.ok) {
         this.logger.error(
-          `MapTiler API returned ${response.status}: ${await response.text().catch(() => 'unknown error')}`,
+          `Stadia Maps API returned ${response.status}: ${await response.text().catch(() => 'unknown error')}`,
         );
         return null;
       }
 
-      return (await response.json()) as MapTilerGeocodingResponse;
+      return (await response.json()) as StadiaMapsGeocodingResponse;
     } catch (error) {
       if ((error as Error).name === 'AbortError') {
         this.logger.error(
-          `MapTiler API request timed out after ${TIMEOUT_MS}ms`,
+          `Stadia Maps API request timed out after ${TIMEOUT_MS}ms`,
         );
       } else {
         this.logger.error(
-          `MapTiler API request failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          `Stadia Maps API request failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
         );
       }
       return null;
