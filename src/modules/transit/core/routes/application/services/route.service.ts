@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../../../infrastructure/database/prisma.service';
+import { encodePolyline6 } from '../../../../../../common/utils/polyline6';
 import type { RouteEntity } from '../../domain/entities/route.entity';
 import {
   ROUTE_REPOSITORY,
@@ -49,7 +50,7 @@ export class RouteService {
 
   async getRouteShape(
     routeId: string,
-  ): Promise<{ type: 'LineString'; coordinates: number[][] } | null> {
+  ): Promise<string | null> {
     const db = this.prismaService as any;
 
     const trips = await db.trip.findMany({
@@ -78,7 +79,7 @@ export class RouteService {
       ]);
 
       if (coords.length >= MIN_GOOD_SHAPE_POINTS) {
-        return { type: 'LineString', coordinates: coords };
+        return encodePolyline6(coords);
       }
     }
 
@@ -90,7 +91,7 @@ export class RouteService {
 
   private async loadOsmMatchedGeometry(
     routeId: string,
-  ): Promise<{ type: 'LineString'; coordinates: number[][] } | null> {
+  ): Promise<string | null> {
     const db = this.prismaService as any;
 
     const route = await db.route.findUnique({
@@ -118,7 +119,7 @@ export class RouteService {
       return null;
     }
 
-    return { type: 'LineString', coordinates: geom.coordinates };
+    return encodePolyline6(geom.coordinates);
   }
 
   async getRouteStops(routeId: string): Promise<{

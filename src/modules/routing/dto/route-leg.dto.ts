@@ -60,18 +60,8 @@ export class RouteLegDto {
   arrivalTimeSeconds?: number;
 
   @ApiPropertyOptional({
-    description: 'GeoJSON LineString geometry for the leg',
-    example: {
-      type: 'LineString',
-      coordinates: [
-        [106.8203, -6.1675],
-        [106.819, -6.165],
-        [106.818, -6.162],
-      ],
-    },
+    description: 'Road geometry for the leg, encoded as polyline6',
+    example: 'v{lwJwkxvjEg{CfpAozDn}@gzn@ffF',
   })
-  geometry?: {
-    type: 'LineString';
-    coordinates: number[][];
-  };
+  geometry?: string;
 }

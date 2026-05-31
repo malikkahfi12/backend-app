@@ -60,11 +60,11 @@ export class TripsController {
 
   @Get(':tripId/shape')
   @ApiOkResponse({
-    description: 'Trip shape returned as GeoJSON LineString.',
+    description: 'Trip shape returned as polyline6-encoded string.',
   })
   async getTripShape(
     @Param('tripId') tripId: string,
-  ): Promise<{ type: string; coordinates: number[][] } | null> {
+  ): Promise<string | null> {
     const shape = await this.tripService.getTripShape(tripId);
     if (!shape) throw new NotFoundException(`Trip not found or has no shape`);
     return shape;

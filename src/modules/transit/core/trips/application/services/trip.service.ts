@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../../../infrastructure/database/prisma.service';
+import { encodePolyline6 } from '../../../../../../common/utils/polyline6';
 import type { TripEntity } from '../../domain/entities/trip.entity';
 import {
   TRIP_REPOSITORY,
@@ -31,7 +32,7 @@ export class TripService {
 
   async getTripShape(
     tripId: string,
-  ): Promise<{ type: 'LineString'; coordinates: number[][] } | null> {
+  ): Promise<string | null> {
     const db = this.prismaService as any;
 
     const trip = await db.trip.findUnique({
@@ -51,13 +52,12 @@ export class TripService {
 
     if (!points || points.length === 0) return null;
 
-    return {
-      type: 'LineString',
-      coordinates: points.map((p: Record<string, unknown>) => [
+    return encodePolyline6(
+      points.map((p: Record<string, unknown>) => [
         p.shapePtLon as number,
         p.shapePtLat as number,
       ]),
-    };
+    );
   }
 
   async getTripStops(tripId: string): Promise<TripStopDto[]> {
