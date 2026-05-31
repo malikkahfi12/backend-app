@@ -15,8 +15,8 @@ import { RouteLegDto } from '../dto/route-leg.dto';
 import { RoutingGraph, RoutingGraphNode } from '../graph/routing-graph.types';
 import { RoutingEdgeType } from '../enums/routing-edge-type.enum';
 import {
-  WALK_GEOMETRY_MAPBOX_MIN_DISTANCE_METERS,
-  MAPBOX_DIRECTIONS_TIMEOUT_MS,
+  WALK_GEOMETRY_MAPTILER_MIN_DISTANCE_METERS,
+  MAPTILER_DIRECTIONS_TIMEOUT_MS,
 } from '../constants/routing.constants';
 
 interface StopCandidate {
@@ -47,18 +47,18 @@ const MAX_ROUTE_OPTIONS = 3;
 @Injectable()
 export class RoutingSearchService {
   private readonly logger = new Logger(RoutingSearchService.name);
-  private readonly mapboxAccessToken: string;
-  private readonly mapboxBaseUrl: string;
+  private readonly maptilerApiKey: string;
+  private readonly maptilerBaseUrl: string;
 
   constructor(
     private readonly routingGraphService: RoutingGraphService,
     private readonly prismaService: PrismaService,
     configService: ConfigService<AppConfig, true>,
   ) {
-    this.mapboxAccessToken = configService.get('mapbox.accessToken', {
+    this.maptilerApiKey = configService.get('maptiler.apiKey', {
       infer: true,
     });
-    this.mapboxBaseUrl = configService.get('mapbox.geocodingBaseUrl', {
+    this.maptilerBaseUrl = configService.get('maptiler.geocodingBaseUrl', {
       infer: true,
     });
   }
@@ -382,18 +382,18 @@ export class RoutingSearchService {
   ): Promise<{ type: 'LineString'; coordinates: number[][] } | undefined> {
     if (
       leg.distanceMeters != null &&
-      leg.distanceMeters < WALK_GEOMETRY_MAPBOX_MIN_DISTANCE_METERS
+      leg.distanceMeters < WALK_GEOMETRY_MAPTILER_MIN_DISTANCE_METERS
     ) {
       return this.straightLineGeometry(leg, graph);
     }
 
     return (
-      (await this.fetchMapboxWalkingGeometry(leg, graph)) ??
+      (await this.fetchMaptilerWalkingGeometry(leg, graph)) ??
       this.straightLineGeometry(leg, graph)
     );
   }
 
-  private async fetchMapboxWalkingGeometry(
+  private async fetchMaptilerWalkingGeometry(
     leg: RouteLegDto,
     graph: RoutingGraph,
   ): Promise<{ type: 'LineString'; coordinates: number[][] } | undefined> {
@@ -412,12 +412,12 @@ export class RoutingSearchService {
     }
 
     const coords = `${fromNode.longitude},${fromNode.latitude};${toNode.longitude},${toNode.latitude}`;
-    const url = `${this.mapboxBaseUrl}/directions/v5/mapbox/walking/${coords}?geometries=geojson&access_token=${encodeURIComponent(this.mapboxAccessToken)}`;
+    const url = `${this.maptilerBaseUrl}/routes/walking/${coords}?geometries=geojson&key=${encodeURIComponent(this.maptilerApiKey)}`;
 
     const controller = new AbortController();
     const timer = setTimeout(
       () => controller.abort(),
-      MAPBOX_DIRECTIONS_TIMEOUT_MS,
+      MAPTILER_DIRECTIONS_TIMEOUT_MS,
     );
 
     try {
@@ -425,7 +425,7 @@ export class RoutingSearchService {
 
       if (!response.ok) {
         this.logger.warn(
-          `Mapbox Directions returned ${response.status}: ${await response.text().catch(() => 'unknown error')}`,
+          `MapTiler Directions returned ${response.status}: ${await response.text().catch(() => 'unknown error')}`,
         );
         return undefined;
       }
@@ -438,7 +438,7 @@ export class RoutingSearchService {
         !data.routes[0]?.geometry
       ) {
         this.logger.warn(
-          `Mapbox Directions returned code=${data?.code} or no routes`,
+          `MapTiler Directions returned code=${data?.code} or no routes`,
         );
         return undefined;
       }
@@ -450,7 +450,7 @@ export class RoutingSearchService {
     } catch (error) {
       if ((error as Error).name !== 'AbortError') {
         this.logger.warn(
-          `Mapbox walking directions failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          `MapTiler walking directions failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
         );
       }
       return undefined;

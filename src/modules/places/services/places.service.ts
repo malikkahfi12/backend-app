@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import {
-  MapboxGeocodingService,
+  MapTilerGeocodingService,
   NormalizedPlaceResult,
   NormalizedReverseResult,
-} from './mapbox-geocoding.service';
+} from './maptiler-geocoding.service';
 
 @Injectable()
 export class PlacesService {
-  constructor(private readonly geocodingService: MapboxGeocodingService) {}
+  constructor(private readonly geocodingService: MapTilerGeocodingService) {}
 
   async search(
     query: string,

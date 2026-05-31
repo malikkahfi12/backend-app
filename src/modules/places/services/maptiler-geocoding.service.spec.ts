@@ -1,12 +1,12 @@
 import {
-  MapboxGeocodingService,
+  MapTilerGeocodingService,
   NormalizedReverseResult,
-} from './mapbox-geocoding.service';
+} from './maptiler-geocoding.service';
 import { ConfigService } from '@nestjs/config';
 import { AppConfig } from '@/config/app.config';
 
-describe('MapboxGeocodingService', () => {
-  let service: MapboxGeocodingService;
+describe('MapTilerGeocodingService', () => {
+  let service: MapTilerGeocodingService;
   let mockFetch: jest.Mock;
 
   const mockFeature = (overrides?: Record<string, unknown>) => ({
@@ -29,8 +29,8 @@ describe('MapboxGeocodingService', () => {
   const mockConfigService = {
     get: jest.fn((key: string) => {
       const config: Record<string, string> = {
-        'mapbox.accessToken': 'test-access-token',
-        'mapbox.geocodingBaseUrl': 'https://api.mapbox.com',
+        'maptiler.apiKey': 'test-api-key',
+        'maptiler.geocodingBaseUrl': 'https://api.maptiler.com',
       };
       return config[key];
     }),
@@ -46,7 +46,7 @@ describe('MapboxGeocodingService', () => {
       }),
     });
     global.fetch = mockFetch;
-    service = new MapboxGeocodingService(
+    service = new MapTilerGeocodingService(
       mockConfigService as unknown as ConfigService<AppConfig, true>,
     );
   });
@@ -63,7 +63,7 @@ describe('MapboxGeocodingService', () => {
         latitude: -6.902,
         longitude: 107.618,
         type: 'poi',
-        provider: 'mapbox',
+        provider: 'maptiler',
       });
     });
 
@@ -174,12 +174,12 @@ describe('MapboxGeocodingService', () => {
       expect(results[0].name).toBe('Fallback Name');
     });
 
-    it('should use Mapbox v5 geocoding URL format', async () => {
+    it('should use MapTiler geocoding URL format with key auth', async () => {
       await service.search('test');
 
       const url = mockFetch.mock.calls[0][0] as string;
-      expect(url).toContain('/geocoding/v5/mapbox.places/');
-      expect(url).toContain('access_token=test-access-token');
+      expect(url).toContain('/geocoding/test.json');
+      expect(url).toContain('key=test-api-key');
     });
   });
 
@@ -196,7 +196,7 @@ describe('MapboxGeocodingService', () => {
         address: 'Gedung Sate, Bandung, Jawa Barat, Indonesia',
         latitude: -6.902,
         longitude: 107.618,
-        provider: 'mapbox',
+        provider: 'maptiler',
       });
     });
 
