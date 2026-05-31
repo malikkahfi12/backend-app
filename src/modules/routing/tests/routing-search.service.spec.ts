@@ -11,8 +11,8 @@ describe('RoutingSearchService', () => {
   const mockConfigService = {
     get: jest.fn((key: string) => {
       const config: Record<string, string> = {
-        'mapbox.accessToken': 'test-token',
-        'mapbox.geocodingBaseUrl': 'https://api.mapbox.com',
+        'maptiler.apiKey': 'test-api-key',
+        'maptiler.geocodingBaseUrl': 'https://api.maptiler.com',
       };
       return config[key];
     }),
@@ -494,8 +494,8 @@ describe('Route leg geometry', () => {
   const mockConfigService = {
     get: jest.fn((key: string) => {
       const config: Record<string, string> = {
-        'mapbox.accessToken': 'test-token',
-        'mapbox.geocodingBaseUrl': 'https://api.mapbox.com',
+        'maptiler.apiKey': 'test-api-key',
+        'maptiler.geocodingBaseUrl': 'https://api.maptiler.com',
       };
       return config[key];
     }),
@@ -773,7 +773,7 @@ describe('Route leg geometry', () => {
     ]);
   });
 
-  it('WALK leg < 100m uses straight-line without calling Mapbox', async () => {
+  it('WALK leg < 100m uses straight-line without calling MapTiler', async () => {
     const fetchSpy = jest.spyOn(global, 'fetch');
 
     const mockPrisma = {} as unknown as PrismaService;
@@ -811,15 +811,15 @@ describe('Route leg geometry', () => {
       [106.8143, -6.1375],
     ]);
 
-    const mapboxCalls = (fetchSpy as jest.Mock).mock.calls.filter(
-      (call: unknown[]) => String(call[0]).includes('mapbox'),
+    const mapTilerCalls = (fetchSpy as jest.Mock).mock.calls.filter(
+      (call: unknown[]) => String(call[0]).includes('maptiler'),
     );
-    expect(mapboxCalls).toHaveLength(0);
+    expect(mapTilerCalls).toHaveLength(0);
     fetchSpy.mockRestore();
   });
 
-  it('WALK leg >= 100m calls Mapbox and returns walking geometry', async () => {
-    const mockMapboxGeometry = {
+  it('WALK leg >= 100m calls MapTiler and returns walking geometry', async () => {
+    const mockMaptilerGeometry = {
       type: 'LineString',
       coordinates: [
         [106.8203, -6.1675],
@@ -833,7 +833,7 @@ describe('Route leg geometry', () => {
       ok: true,
       json: jest.fn().mockResolvedValue({
         code: 'Ok',
-        routes: [{ geometry: mockMapboxGeometry }],
+        routes: [{ geometry: mockMaptilerGeometry }],
       }),
     });
 
@@ -866,16 +866,16 @@ describe('Route leg geometry', () => {
     const service = new RoutingSearchService(mockGraphService, mockPrisma, mockConfigService);
     const result = await service.searchRoute('stop-a', 'stop-b');
 
-    expect(result.options[0].legs[0].geometry).toEqual(mockMapboxGeometry);
+    expect(result.options[0].legs[0].geometry).toEqual(mockMaptilerGeometry);
     expect(global.fetch).toHaveBeenCalledTimes(1);
 
     const fetchUrl = (global.fetch as jest.Mock).mock.calls[0][0] as string;
-    expect(fetchUrl).toContain('/directions/v5/mapbox/walking/');
+    expect(fetchUrl).toContain('/routes/walking/');
     expect(fetchUrl).toContain('geometries=geojson');
-    expect(fetchUrl).toContain('access_token=test-token');
+    expect(fetchUrl).toContain('key=test-api-key');
   });
 
-  it('WALK leg >= 100m falls back to straight-line when Mapbox returns NoRoute', async () => {
+  it('WALK leg >= 100m falls back to straight-line when MapTiler returns NoRoute', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: jest.fn().mockResolvedValue({
@@ -920,7 +920,7 @@ describe('Route leg geometry', () => {
     ]);
   });
 
-  it('WALK leg >= 100m falls back to straight-line when Mapbox returns http error', async () => {
+  it('WALK leg >= 100m falls back to straight-line when MapTiler returns http error', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: false,
       status: 401,
@@ -1002,7 +1002,7 @@ describe('Route leg geometry', () => {
     ]);
   });
 
-  it('WALK leg without distanceMeters calls Mapbox and falls back on failure', async () => {
+  it('WALK leg without distanceMeters calls MapTiler and falls back on failure', async () => {
     global.fetch = jest.fn().mockRejectedValue(new Error('no network'));
 
     const mockPrisma = {} as unknown as PrismaService;

@@ -22,8 +22,8 @@ export interface AppConfig {
     baseUrl: string;
     timeout: number;
   };
-  mapbox: {
-    accessToken: string;
+  maptiler: {
+    apiKey: string;
     geocodingBaseUrl: string;
   };
 }

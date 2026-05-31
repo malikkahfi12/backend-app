@@ -38,7 +38,7 @@ export class SearchPlaceResultDto {
   type!: string;
 
   @ApiProperty({
-    example: 'mapbox',
+    example: 'maptiler',
     description: 'Data provider name',
   })
   provider!: string;
@@ -70,7 +70,7 @@ export class ReversePlaceResultDto {
   longitude!: number;
 
   @ApiProperty({
-    example: 'mapbox',
+    example: 'maptiler',
     description: 'Data provider name',
   })
   provider!: string;
