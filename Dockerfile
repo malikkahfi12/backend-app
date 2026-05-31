@@ -1,6 +1,5 @@
 FROM node:22-alpine AS deps
 WORKDIR /app
-RUN apk add --no-cache libsodium-dev
 COPY package*.json ./
 RUN npm ci
 
@@ -16,7 +15,6 @@ RUN npm prune --omit=dev
 
 FROM node:22-alpine AS runner
 WORKDIR /app
-RUN apk add --no-cache libsodium
 ENV NODE_ENV=production
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/node_modules ./node_modules

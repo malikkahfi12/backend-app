@@ -1,5 +1,5 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
-import sodium from 'sodium-native';
+import { HttpStatus, Injectable, OnModuleInit } from '@nestjs/common';
+import _sodium from 'libsodium-wrappers';
 import { Prisma } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
@@ -23,11 +23,18 @@ const RESERVED_USERNAMES = new Set([
 ]);
 
 @Injectable()
-export class AuthService {
+export class AuthService implements OnModuleInit {
+  private sodium!: typeof _sodium;
+
   constructor(
     private readonly prismaService: PrismaService,
     private readonly tokenService: TokenService,
   ) {}
+
+  async onModuleInit() {
+    await _sodium.ready;
+    this.sodium = _sodium;
+  }
 
   async registerDevice(
     dto: RegisterDeviceDto,
@@ -538,7 +545,7 @@ export class AuthService {
         publicKeyBase64url.replace(/-/g, '+').replace(/_/g, '/'),
         'base64',
       );
-      return sodium.crypto_sign_verify_detached(signature, message, publicKey);
+      return this.sodium.crypto_sign_verify_detached(signature, message, publicKey);
     } catch {
       return false;
     }
@@ -565,7 +572,7 @@ export class AuthService {
         key.replace(/-/g, '+').replace(/_/g, '/'),
         'base64',
       );
-      return raw.length === sodium.crypto_sign_PUBLICKEYBYTES;
+      return raw.length === this.sodium.crypto_sign_PUBLICKEYBYTES;
     } catch {
       return false;
     }

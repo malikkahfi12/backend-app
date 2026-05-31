@@ -11,12 +11,16 @@ const CHALLENGE_BASE64URL = 'dGhpcyBpcyBhIHJhbmRvbSBjaGFsbGVuZ2U';
 const SIGNATURE_BASE64URL = 'c2lnbmF0dXJlLWJhc2U2NHVybA';
 const PUBLIC_KEY = 'IADkYx5hPFZe5ckSnBCctH7DYF_vbgMjJeI1zQORrRI';
 
-jest.mock('sodium-native', () => ({
-  crypto_sign_verify_detached: jest.fn(),
-  crypto_sign_PUBLICKEYBYTES: 32,
+jest.mock('libsodium-wrappers', () => ({
+  __esModule: true,
+  default: {
+    ready: Promise.resolve(),
+    crypto_sign_verify_detached: jest.fn(),
+    crypto_sign_PUBLICKEYBYTES: 32,
+  },
 }));
 
-import sodium from 'sodium-native';
+import _sodium from 'libsodium-wrappers';
 
 const mockUser = {
   id: 'user-uuid',
@@ -159,24 +163,26 @@ function buildPrismaService(mocks: PrismaMocks = {}): PrismaService {
   } as unknown as PrismaService;
 }
 
-function makeService(
+async function makeService(
   mocks: PrismaMocks = {},
   tokenService?: TokenService,
-): AuthService {
-  return new AuthService(
+): Promise<AuthService> {
+  const service = new AuthService(
     buildPrismaService(mocks),
     tokenService ?? defaultTokenService(),
   );
+  await service.onModuleInit();
+  return service;
 }
 
 describe('AuthService', () => {
   beforeEach(() => {
-    (sodium.crypto_sign_verify_detached as jest.Mock).mockReturnValue(true);
+    (_sodium.crypto_sign_verify_detached as jest.Mock).mockReturnValue(true);
   });
 
   describe('registerDevice', () => {
     it('registers a user and device with tokens', async () => {
-      const service = makeService();
+      const service = await makeService();
       const result = await service.registerDevice(validDto);
 
       expect(result.data.user.username).toBe('malik');
@@ -187,7 +193,7 @@ describe('AuthService', () => {
     });
 
     it('throws USERNAME_ALREADY_EXISTS when username is taken', async () => {
-      const service = makeService({
+      const service = await makeService({
         tx: { findUnique: jest.fn().mockResolvedValue(mockUser) },
       });
 
@@ -202,7 +208,7 @@ describe('AuthService', () => {
     });
 
     it('throws INVALID_PUBLIC_KEY for empty string', async () => {
-      const service = makeService();
+      const service = await makeService();
 
       try {
         await service.registerDevice({ ...validDto, publicKey: '' });
@@ -216,7 +222,7 @@ describe('AuthService', () => {
 
   describe('initiateChallenge', () => {
     it('generates a challenge for a valid user and device', async () => {
-      const service = makeService();
+      const service = await makeService();
       const result = await service.initiateChallenge({
         username: 'Malik',
         deviceId: 'device-uuid',
@@ -229,7 +235,7 @@ describe('AuthService', () => {
     });
 
     it('throws DEVICE_NOT_FOUND when device does not belong to user', async () => {
-      const service = makeService({
+      const service = await makeService({
         userDeviceFindFirst: jest.fn().mockResolvedValue(null),
       });
 
@@ -249,7 +255,7 @@ describe('AuthService', () => {
     });
 
     it('throws DEVICE_NOT_FOUND when user is inactive', async () => {
-      const service = makeService({
+      const service = await makeService({
         userDeviceFindFirst: jest.fn().mockResolvedValue(null),
       });
 
@@ -279,6 +285,7 @@ describe('AuthService', () => {
           .mockResolvedValue(mockChallengeRecord),
       });
       const service = new AuthService(prisma, defaultTokenService());
+      await service.onModuleInit();
       const result = await service.completeChallenge(loginDto);
 
       expect(result.data.user.username).toBe('malik');
@@ -292,7 +299,7 @@ describe('AuthService', () => {
     });
 
     it('throws INVALID_CHALLENGE for unknown challengeId', async () => {
-      const service = makeService({
+      const service = await makeService({
         challengeFindUnique: jest.fn().mockResolvedValue(null),
       });
 
@@ -306,7 +313,7 @@ describe('AuthService', () => {
     });
 
     it('throws CHALLENGE_EXPIRED for expired challenge', async () => {
-      const service = makeService({
+      const service = await makeService({
         challengeFindUnique: jest.fn().mockResolvedValue({
           ...mockChallengeRecord,
           expiresAt: new Date(Date.now() - 60000),
@@ -334,6 +341,7 @@ describe('AuthService', () => {
       });
 
       const service = new AuthService(prisma, defaultTokenService());
+      await service.onModuleInit();
 
       try {
         await service.completeChallenge(loginDto);
@@ -347,9 +355,9 @@ describe('AuthService', () => {
     });
 
     it('throws INVALID_SIGNATURE when Ed25519 verification fails', async () => {
-      (sodium.crypto_sign_verify_detached as jest.Mock).mockReturnValue(false);
+      (_sodium.crypto_sign_verify_detached as jest.Mock).mockReturnValue(false);
 
-      const service = makeService({
+      const service = await makeService({
         challengeFindUnique: jest
           .fn()
           .mockResolvedValue(mockChallengeRecord),
@@ -365,7 +373,7 @@ describe('AuthService', () => {
     });
 
     it('throws USER_INACTIVE when user is not active', async () => {
-      const service = makeService({
+      const service = await makeService({
         challengeFindUnique: jest
           .fn()
           .mockResolvedValue(mockChallengeRecord),
@@ -409,6 +417,7 @@ describe('AuthService', () => {
 
       const tokenSvc = defaultTokenService();
       const service = new AuthService(prisma, tokenSvc);
+      await service.onModuleInit();
       const result = await service.refreshToken(REFRESH_TOKEN);
 
       expect(result.accessToken).toBe(ACCESS_TOKEN);
@@ -417,7 +426,7 @@ describe('AuthService', () => {
     });
 
     it('throws INVALID_REFRESH_TOKEN for malformed token', async () => {
-      const service = makeService();
+      const service = await makeService();
 
       try {
         await service.refreshToken('no-dot-here');
@@ -440,6 +449,7 @@ describe('AuthService', () => {
       } as unknown as PrismaService;
 
       const service = new AuthService(prisma, defaultTokenService());
+      await service.onModuleInit();
       const result = await service.logout(REFRESH_TOKEN);
 
       expect(result.message).toBe('Logged out successfully');
@@ -458,13 +468,14 @@ describe('AuthService', () => {
       } as unknown as PrismaService;
 
       const service = new AuthService(prisma, defaultTokenService());
+      await service.onModuleInit();
       const result = await service.logout(REFRESH_TOKEN);
 
       expect(result.message).toBe('Logged out successfully');
     });
 
     it('returns success for malformed token (idempotent)', async () => {
-      const service = makeService();
+      const service = await makeService();
       const result = await service.logout('bad-token');
 
       expect(result.message).toBe('Logged out successfully');
@@ -472,8 +483,8 @@ describe('AuthService', () => {
   });
 
   describe('getCurrentUser', () => {
-    it('returns the user payload as-is', () => {
-      const service = makeService();
+    it('returns the user payload as-is', async () => {
+      const service = await makeService();
       const payload = {
         id: 'user-uuid',
         username: 'malik',
@@ -509,6 +520,7 @@ describe('AuthService', () => {
       ]);
 
       const service = new AuthService(prisma, defaultTokenService());
+      await service.onModuleInit();
       const result = await service.listDevices('user-uuid', 'device-uuid');
 
       expect(result.data.devices).toHaveLength(2);
@@ -525,6 +537,7 @@ describe('AuthService', () => {
       ]);
 
       const service = new AuthService(prisma, defaultTokenService());
+      await service.onModuleInit();
       const result = await service.listDevices('user-uuid', 'other-device');
 
       expect(result.data.devices).toHaveLength(1);
@@ -536,6 +549,7 @@ describe('AuthService', () => {
       (prisma.userDevice.findMany as jest.Mock).mockResolvedValue([]);
 
       const service = new AuthService(prisma, defaultTokenService());
+      await service.onModuleInit();
       const result = await service.listDevices('user-uuid', 'device-uuid');
 
       expect(result.data.devices).toEqual([]);
@@ -546,6 +560,7 @@ describe('AuthService', () => {
     it('revokes device refresh tokens successfully', async () => {
       const prisma = buildPrismaService();
       const service = new AuthService(prisma, defaultTokenService());
+      await service.onModuleInit();
       const result = await service.revokeDevice(
         'user-uuid',
         'device-2-uuid',
@@ -566,6 +581,7 @@ describe('AuthService', () => {
     it('sets revokedAt on the device record', async () => {
       const prisma = buildPrismaService();
       const service = new AuthService(prisma, defaultTokenService());
+      await service.onModuleInit();
       await service.revokeDevice('user-uuid', 'device-2-uuid', 'device-uuid');
 
       expect(prisma.userDevice.update).toHaveBeenCalledWith({
@@ -575,7 +591,7 @@ describe('AuthService', () => {
     });
 
     it('throws CANNOT_REMOVE_CURRENT_DEVICE for current device', async () => {
-      const service = makeService();
+      const service = await makeService();
 
       try {
         await service.revokeDevice(
@@ -594,7 +610,7 @@ describe('AuthService', () => {
     });
 
     it('throws DEVICE_NOT_FOUND for non-existent device', async () => {
-      const service = makeService({
+      const service = await makeService({
         userDeviceFindFirst: jest.fn().mockResolvedValue(null),
       });
 
@@ -617,7 +633,7 @@ describe('AuthService', () => {
     it.each(['admin', 'root', 'system', 'support', 'patheo', 'api', 'auth'])(
       'rejects reserved username %s',
       async (reserved) => {
-        const service = makeService();
+        const service = await makeService();
 
         try {
           await service.registerDevice({
@@ -635,7 +651,7 @@ describe('AuthService', () => {
 
   describe('public key size validation', () => {
     it('rejects key shorter than 32 bytes', async () => {
-      const service = makeService();
+      const service = await makeService();
 
       try {
         await service.registerDevice({
@@ -650,7 +666,7 @@ describe('AuthService', () => {
     });
 
     it('rejects key longer than 32 bytes', async () => {
-      const service = makeService();
+      const service = await makeService();
 
       try {
         await service.registerDevice({
@@ -665,7 +681,7 @@ describe('AuthService', () => {
     });
 
     it('rejects key with invalid base64 chars', async () => {
-      const service = makeService();
+      const service = await makeService();
 
       try {
         await service.registerDevice({
@@ -692,6 +708,7 @@ describe('AuthService', () => {
       });
 
       const service = new AuthService(prisma, defaultTokenService());
+      await service.onModuleInit();
 
       try {
         await service.completeChallenge({
@@ -710,7 +727,7 @@ describe('AuthService', () => {
 
   describe('revoked device blocking', () => {
     it('initiateChallenge filters out revoked devices', async () => {
-      const service = makeService({
+      const service = await makeService({
         userDeviceFindFirst: jest.fn().mockResolvedValue(null),
       });
 
@@ -738,6 +755,7 @@ describe('AuthService', () => {
       });
 
       const service = new AuthService(prisma, defaultTokenService());
+      await service.onModuleInit();
       const result = await service.cleanupExpiredRecords();
 
       expect(result.challenges).toBe(5);
@@ -747,6 +765,7 @@ describe('AuthService', () => {
     it('returns zero counts when nothing to clean', async () => {
       const prisma = buildPrismaService();
       const service = new AuthService(prisma, defaultTokenService());
+      await service.onModuleInit();
       const result = await service.cleanupExpiredRecords();
 
       expect(result.challenges).toBe(0);
