@@ -21,12 +21,6 @@ export default (): AppConfig => ({
   redis: {
     url: process.env.REDIS_URL as string,
   },
-  overpass: {
-    baseUrl:
-      process.env.OVERPASS_BASE_URL ??
-      'https://overpass-api.de/api/interpreter',
-    timeout: Number(process.env.OVERPASS_TIMEOUT ?? 30000),
-  },
   maptiler: {
     apiKey: process.env.MAPTILER_API_KEY as string,
     geocodingBaseUrl:
