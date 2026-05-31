@@ -81,15 +81,6 @@ class EnvironmentVariables {
 
   @IsString()
   @IsNotEmpty()
-  OVERPASS_BASE_URL!: string;
-
-  @Transform(({ value }) => Number(value))
-  @IsInt()
-  @Min(1000)
-  OVERPASS_TIMEOUT!: number;
-
-  @IsString()
-  @IsNotEmpty()
   MAPTILER_API_KEY!: string;
 
   @IsString()

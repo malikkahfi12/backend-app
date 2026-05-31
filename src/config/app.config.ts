@@ -18,10 +18,6 @@ export interface AppConfig {
   redis: {
     url: string;
   };
-  overpass: {
-    baseUrl: string;
-    timeout: number;
-  };
   maptiler: {
     apiKey: string;
     geocodingBaseUrl: string;
