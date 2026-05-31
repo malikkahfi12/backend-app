@@ -60,11 +60,11 @@ export class RoutesController {
 
   @Get(':id/shape')
   @ApiOkResponse({
-    description: 'Route shape returned as GeoJSON LineString.',
+    description: 'Route shape returned as polyline6-encoded string.',
   })
   async getRouteShape(
     @Param('id') id: string,
-  ): Promise<{ type: string; coordinates: number[][] } | null> {
+  ): Promise<string | null> {
     const shape = await this.routeService.getRouteShape(id);
     if (!shape) throw new NotFoundException(`Route not found or has no shape`);
     return shape;

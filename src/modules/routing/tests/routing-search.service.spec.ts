@@ -4,6 +4,7 @@ import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { RoutingEdgeType } from '../enums/routing-edge-type.enum';
 import { ConfigService } from '@nestjs/config';
 import { AppConfig } from '../../../config/app.config';
+import { encodePolyline6, decodePolyline6 } from '../../../common/utils/polyline6';
 
 describe('RoutingSearchService', () => {
   const mockPrismaService = {} as unknown as PrismaService;
@@ -577,8 +578,8 @@ describe('Route leg geometry', () => {
     const result = await service.searchRoute('stop-a', 'stop-b');
 
     expect(result.options[0].legs[0].geometry).toBeDefined();
-    expect(result.options[0].legs[0].geometry!.type).toBe('LineString');
-    expect(result.options[0].legs[0].geometry!.coordinates).toEqual([
+    expect(typeof result.options[0].legs[0].geometry).toBe('string');
+    expect(decodePolyline6(result.options[0].legs[0].geometry!)).toEqual([
       [106.8203, -6.1675],
       [106.8143, -6.1375],
     ]);
@@ -624,8 +625,8 @@ describe('Route leg geometry', () => {
     const result = await service.searchRoute('stop-a', 'stop-b');
 
     expect(result.options[0].legs[0].geometry).toBeDefined();
-    expect(result.options[0].legs[0].geometry!.type).toBe('LineString');
-    expect(result.options[0].legs[0].geometry!.coordinates).toEqual([
+    expect(typeof result.options[0].legs[0].geometry).toBe('string');
+    expect(decodePolyline6(result.options[0].legs[0].geometry!)).toEqual([
       [106.8203, -6.1675],
       [106.8143, -6.1375],
     ]);
@@ -667,8 +668,8 @@ describe('Route leg geometry', () => {
     const result = await service.searchRoute('stop-a', 'stop-b');
 
     expect(result.options[0].legs[0].geometry).toBeDefined();
-    expect(result.options[0].legs[0].geometry!.type).toBe('LineString');
-    expect(result.options[0].legs[0].geometry!.coordinates).toEqual([
+    expect(typeof result.options[0].legs[0].geometry).toBe('string');
+    expect(decodePolyline6(result.options[0].legs[0].geometry!)).toEqual([
       [106.8203, -6.1675],
       [106.8143, -6.1375],
     ]);
@@ -736,16 +737,13 @@ describe('Route leg geometry', () => {
 
     const geometry = result.options[0].legs[0].geometry;
     expect(geometry).toBeDefined();
-    expect(geometry!.type).toBe('LineString');
+    expect(typeof geometry).toBe('string');
 
-    expect(geometry!.coordinates[0]).toEqual([106.82, -6.167]);
-    expect(geometry!.coordinates[geometry!.coordinates.length - 1]).toEqual([
-      106.8143, -6.1375,
-    ]);
-    expect(geometry!.coordinates.length).toBeGreaterThanOrEqual(2);
-    expect(geometry!.coordinates.length).toBeLessThanOrEqual(
-      shapePoints.length,
-    );
+    const coords = decodePolyline6(geometry!);
+    expect(coords[0]).toEqual([106.82, -6.167]);
+    expect(coords[coords.length - 1]).toEqual([106.8143, -6.1375]);
+    expect(coords.length).toBeGreaterThanOrEqual(2);
+    expect(coords.length).toBeLessThanOrEqual(shapePoints.length);
   });
 
   it('TRANSIT leg shape DB error falls back to straight-line', async () => {
@@ -790,8 +788,8 @@ describe('Route leg geometry', () => {
     const result = await service.searchRoute('stop-a', 'stop-b');
 
     expect(result.options[0].legs[0].geometry).toBeDefined();
-    expect(result.options[0].legs[0].geometry!.type).toBe('LineString');
-    expect(result.options[0].legs[0].geometry!.coordinates).toEqual([
+    expect(typeof result.options[0].legs[0].geometry).toBe('string');
+    expect(decodePolyline6(result.options[0].legs[0].geometry!)).toEqual([
       [106.8203, -6.1675],
       [106.8143, -6.1375],
     ]);
@@ -834,7 +832,7 @@ describe('Route leg geometry', () => {
     const result = await service.searchRoute('stop-a', 'stop-b');
 
     expect(result.options[0].legs[0].geometry).toBeDefined();
-    expect(result.options[0].legs[0].geometry!.coordinates).toEqual([
+    expect(decodePolyline6(result.options[0].legs[0].geometry!)).toEqual([
       [106.8203, -6.1675],
       [106.8143, -6.1375],
     ]);
@@ -847,15 +845,6 @@ describe('Route leg geometry', () => {
   });
 
   it('WALK leg >= 100m calls Stadia Maps and returns walking geometry', async () => {
-    const mockStadiaMapsGeometry = {
-      type: 'LineString',
-      coordinates: [
-        [106.8203, -6.1675],
-        [106.819, -6.165],
-        [106.818, -6.162],
-        [106.8143, -6.1375],
-      ],
-    };
     const mockPolyline6 = 'v{lwJwkxvjEg{CfpAozDn}@gzn@ffF';
 
     global.fetch = jest.fn().mockResolvedValue({
@@ -900,7 +889,7 @@ describe('Route leg geometry', () => {
     );
     const result = await service.searchRoute('stop-a', 'stop-b');
 
-    expect(result.options[0].legs[0].geometry).toEqual(mockStadiaMapsGeometry);
+    expect(result.options[0].legs[0].geometry).toEqual(mockPolyline6);
     expect(global.fetch).toHaveBeenCalledTimes(1);
 
     const fetchUrl = (global.fetch as jest.Mock).mock.calls[0][0] as string;
@@ -954,7 +943,7 @@ describe('Route leg geometry', () => {
     const result = await service.searchRoute('stop-a', 'stop-b');
 
     expect(result.options[0].legs[0].geometry).toBeDefined();
-    expect(result.options[0].legs[0].geometry!.coordinates).toEqual([
+    expect(decodePolyline6(result.options[0].legs[0].geometry!)).toEqual([
       [106.8203, -6.1675],
       [106.8143, -6.1375],
     ]);
@@ -1001,7 +990,7 @@ describe('Route leg geometry', () => {
     const result = await service.searchRoute('stop-a', 'stop-b');
 
     expect(result.options[0].legs[0].geometry).toBeDefined();
-    expect(result.options[0].legs[0].geometry!.coordinates).toEqual([
+    expect(decodePolyline6(result.options[0].legs[0].geometry!)).toEqual([
       [106.8203, -6.1675],
       [106.8143, -6.1375],
     ]);
@@ -1044,7 +1033,7 @@ describe('Route leg geometry', () => {
     const result = await service.searchRoute('stop-a', 'stop-b');
 
     expect(result.options[0].legs[0].geometry).toBeDefined();
-    expect(result.options[0].legs[0].geometry!.coordinates).toEqual([
+    expect(decodePolyline6(result.options[0].legs[0].geometry!)).toEqual([
       [106.8203, -6.1675],
       [106.8143, -6.1375],
     ]);
@@ -1086,7 +1075,7 @@ describe('Route leg geometry', () => {
     const result = await service.searchRoute('stop-a', 'stop-b');
 
     expect(result.options[0].legs[0].geometry).toBeDefined();
-    expect(result.options[0].legs[0].geometry!.coordinates).toEqual([
+    expect(decodePolyline6(result.options[0].legs[0].geometry!)).toEqual([
       [106.8203, -6.1675],
       [106.8143, -6.1375],
     ]);

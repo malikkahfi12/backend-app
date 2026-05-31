@@ -50,19 +50,10 @@ export class RouteResponseDto {
   regionId?: string | null;
 
   @ApiPropertyOptional({
-    description: 'GeoJSON LineString geometry for the route path',
-    example: {
-      type: 'LineString',
-      coordinates: [
-        [106.847, -6.209],
-        [106.846, -6.21],
-      ],
-    },
+    description: 'Road geometry for the route path, encoded as polyline6',
+    example: 'mzvmC{~}xV}AcAWm@Qe@',
   })
-  geometry?: {
-    type: 'LineString';
-    coordinates: number[][];
-  } | null;
+  geometry?: string | null;
 
   @ApiPropertyOptional({
     example: '550e8400-e29b-41d4-a716-446655440000',

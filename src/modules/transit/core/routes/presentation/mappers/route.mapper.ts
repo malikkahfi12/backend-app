@@ -3,7 +3,7 @@ import { RouteResponseDto } from '../dto/route-response.dto';
 
 export function toRouteResponse(
   entity: RouteEntity,
-  geometry?: { type: 'LineString'; coordinates: number[][] } | null,
+  geometry?: string | null,
 ): RouteResponseDto {
   return {
     id: entity.id,

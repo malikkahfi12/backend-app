@@ -18,6 +18,7 @@ import {
   WALK_GEOMETRY_STADIAMAPS_MIN_DISTANCE_METERS,
   STADIAMAPS_DIRECTIONS_TIMEOUT_MS,
 } from '../constants/routing.constants';
+import { encodePolyline6, decodePolyline6 } from '../../../common/utils/polyline6';
 
 interface StopCandidate {
   stopId: string;
@@ -272,7 +273,8 @@ export class RoutingSearchService {
   ): Promise<void> {
     for (const option of response.options) {
       for (const leg of option.legs) {
-        leg.geometry = await this.resolveLegGeometry(leg, graph);
+        const coords = await this.resolveLegGeometry(leg, graph);
+        leg.geometry = coords?.length ? encodePolyline6(coords) : undefined;
       }
     }
   }
@@ -280,7 +282,7 @@ export class RoutingSearchService {
   private async resolveLegGeometry(
     leg: RouteLegDto,
     graph: RoutingGraph,
-  ): Promise<{ type: 'LineString'; coordinates: number[][] } | undefined> {
+  ): Promise<number[][] | undefined> {
     if (leg.type === RoutingEdgeType.WALK) {
       return this.resolveWalkGeometry(leg, graph);
     }
@@ -295,7 +297,7 @@ export class RoutingSearchService {
   private async resolveTransitShapeSegment(
     leg: RouteLegDto,
     graph: RoutingGraph,
-  ): Promise<{ type: 'LineString'; coordinates: number[][] } | undefined> {
+  ): Promise<number[][] | undefined> {
     try {
       const db = this.prismaService as any;
 
@@ -367,10 +369,7 @@ export class RoutingSearchService {
         return this.straightLineGeometry(leg, graph);
       }
 
-      return {
-        type: 'LineString',
-        coordinates: slice,
-      };
+      return slice;
     } catch {
       return this.straightLineGeometry(leg, graph);
     }
@@ -379,7 +378,7 @@ export class RoutingSearchService {
   private async resolveWalkGeometry(
     leg: RouteLegDto,
     graph: RoutingGraph,
-  ): Promise<{ type: 'LineString'; coordinates: number[][] } | undefined> {
+  ): Promise<number[][] | undefined> {
     if (
       leg.distanceMeters != null &&
       leg.distanceMeters < WALK_GEOMETRY_STADIAMAPS_MIN_DISTANCE_METERS
@@ -396,7 +395,7 @@ export class RoutingSearchService {
   private async fetchStadiaMapsWalkingGeometry(
     leg: RouteLegDto,
     graph: RoutingGraph,
-  ): Promise<{ type: 'LineString'; coordinates: number[][] } | undefined> {
+  ): Promise<number[][] | undefined> {
     const fromNode = graph.nodes.get(leg.fromStopId ?? '');
     const toNode = graph.nodes.get(leg.toStopId ?? '');
 
@@ -451,13 +450,13 @@ export class RoutingSearchService {
         return undefined;
       }
 
-      const coordinates = this.decodePolyline6(shape);
+      const coordinates = decodePolyline6(shape);
       if (!coordinates.length) {
         this.logger.warn(`Stadia Maps Directions returned invalid geometry`);
         return undefined;
       }
 
-      return { type: 'LineString', coordinates };
+      return coordinates;
     } catch (error) {
       if ((error as Error).name !== 'AbortError') {
         this.logger.warn(
@@ -470,44 +469,10 @@ export class RoutingSearchService {
     }
   }
 
-  private decodePolyline6(encoded: string): number[][] {
-    const coordinates: number[][] = [];
-    let lat = 0;
-    let lon = 0;
-    let i = 0;
-
-    while (i < encoded.length) {
-      let result = 0;
-      let shift = 0;
-      let byte: number;
-      do {
-        byte = encoded.charCodeAt(i++) - 63;
-        result |= (byte & 0x1f) << shift;
-        shift += 5;
-      } while (byte >= 0x20);
-      const deltaLat = result & 1 ? ~(result >> 1) : result >> 1;
-
-      result = 0;
-      shift = 0;
-      do {
-        byte = encoded.charCodeAt(i++) - 63;
-        result |= (byte & 0x1f) << shift;
-        shift += 5;
-      } while (byte >= 0x20);
-      const deltaLon = result & 1 ? ~(result >> 1) : result >> 1;
-
-      lat += deltaLat;
-      lon += deltaLon;
-      coordinates.push([lon / 1e6, lat / 1e6]);
-    }
-
-    return coordinates;
-  }
-
   private async resolveOsmLegGeometry(
     leg: RouteLegDto,
     graph: RoutingGraph,
-  ): Promise<{ type: 'LineString'; coordinates: number[][] } | undefined> {
+  ): Promise<number[][] | undefined> {
     try {
       if (!leg.routeId) return undefined;
 
@@ -559,7 +524,7 @@ export class RoutingSearchService {
 
       if (slice.length === 0) return undefined;
 
-      return { type: 'LineString', coordinates: slice };
+      return slice;
     } catch {
       return undefined;
     }
@@ -568,7 +533,7 @@ export class RoutingSearchService {
   private straightLineGeometry(
     leg: RouteLegDto,
     graph: RoutingGraph,
-  ): { type: 'LineString'; coordinates: number[][] } | undefined {
+  ): number[][] | undefined {
     const fromNode = graph.nodes.get(leg.fromStopId ?? '');
     const toNode = graph.nodes.get(leg.toStopId ?? '');
 
@@ -583,13 +548,10 @@ export class RoutingSearchService {
       return undefined;
     }
 
-    return {
-      type: 'LineString',
-      coordinates: [
-        [fromNode.longitude, fromNode.latitude],
-        [toNode.longitude, toNode.latitude],
-      ],
-    };
+    return [
+      [fromNode.longitude, fromNode.latitude],
+      [toNode.longitude, toNode.latitude],
+    ];
   }
 
   private async searchRouteOnGraph(
