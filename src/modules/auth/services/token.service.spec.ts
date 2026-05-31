@@ -101,9 +101,7 @@ describe('TokenService', () => {
 
   describe('parseTokenId', () => {
     it('extracts the record ID from a valid token', () => {
-      const id = TokenService.parseTokenId(
-        'ZHVtbXktcmVjb3JkLWlk.tzLSEBOobp0',
-      );
+      const id = TokenService.parseTokenId('ZHVtbXktcmVjb3JkLWlk.tzLSEBOobp0');
       expect(id).toBe('dummy-record-id');
     });
 

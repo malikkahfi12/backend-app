@@ -74,19 +74,20 @@ const validDto = {
   platform: 'ios',
 };
 
-function createMockTx(custom: {
-  findUnique?: jest.Mock;
-  createUser?: jest.Mock;
-  createDevice?: jest.Mock;
-} = {}) {
+function createMockTx(
+  custom: {
+    findUnique?: jest.Mock;
+    createUser?: jest.Mock;
+    createDevice?: jest.Mock;
+  } = {},
+) {
   return {
     user: {
       findUnique: custom.findUnique ?? jest.fn().mockResolvedValue(null),
       create: custom.createUser ?? jest.fn().mockResolvedValue(mockUser),
     },
     userDevice: {
-      create:
-        custom.createDevice ?? jest.fn().mockResolvedValue(mockDevice),
+      create: custom.createDevice ?? jest.fn().mockResolvedValue(mockDevice),
     },
   };
 }
@@ -128,13 +129,11 @@ function buildPrismaService(mocks: PrismaMocks = {}): PrismaService {
       findUnique: mocks.userFindUnique ?? jest.fn().mockResolvedValue(null),
       create: jest.fn().mockResolvedValue(mockUser),
       findUniqueOrThrow:
-        mocks.userFindUniqueOrThrow ??
-        jest.fn().mockResolvedValue(mockUser),
+        mocks.userFindUniqueOrThrow ?? jest.fn().mockResolvedValue(mockUser),
     } as unknown,
     userDevice: {
       findFirst:
-        mocks.userDeviceFindFirst ??
-        jest.fn().mockResolvedValue(mockDevice),
+        mocks.userDeviceFindFirst ?? jest.fn().mockResolvedValue(mockDevice),
       findMany: jest.fn().mockResolvedValue([mockDevice]),
       create: jest.fn().mockResolvedValue(mockDevice),
       update: jest.fn().mockResolvedValue(undefined),
@@ -280,9 +279,7 @@ describe('AuthService', () => {
 
     it('completes challenge and returns tokens', async () => {
       const prisma = buildPrismaService({
-        challengeFindUnique: jest
-          .fn()
-          .mockResolvedValue(mockChallengeRecord),
+        challengeFindUnique: jest.fn().mockResolvedValue(mockChallengeRecord),
       });
       const service = new AuthService(prisma, defaultTokenService());
       await service.onModuleInit();
@@ -358,9 +355,7 @@ describe('AuthService', () => {
       (_sodium.crypto_sign_verify_detached as jest.Mock).mockReturnValue(false);
 
       const service = await makeService({
-        challengeFindUnique: jest
-          .fn()
-          .mockResolvedValue(mockChallengeRecord),
+        challengeFindUnique: jest.fn().mockResolvedValue(mockChallengeRecord),
       });
 
       try {
@@ -374,9 +369,7 @@ describe('AuthService', () => {
 
     it('throws USER_INACTIVE when user is not active', async () => {
       const service = await makeService({
-        challengeFindUnique: jest
-          .fn()
-          .mockResolvedValue(mockChallengeRecord),
+        challengeFindUnique: jest.fn().mockResolvedValue(mockChallengeRecord),
         userDeviceFindFirst: jest.fn().mockResolvedValue(null),
       });
 
@@ -594,11 +587,7 @@ describe('AuthService', () => {
       const service = await makeService();
 
       try {
-        await service.revokeDevice(
-          'user-uuid',
-          'device-uuid',
-          'device-uuid',
-        );
+        await service.revokeDevice('user-uuid', 'device-uuid', 'device-uuid');
         fail('Should have thrown');
       } catch (error) {
         expect(error).toBeInstanceOf(AuthException);
@@ -624,7 +613,7 @@ describe('AuthService', () => {
       } catch (error) {
         expect(error).toBeInstanceOf(AuthException);
         expect((error as AuthException).code).toBe('DEVICE_NOT_FOUND');
-      expect((error as AuthException).getStatus()).toBe(HttpStatus.NOT_FOUND);
+        expect((error as AuthException).getStatus()).toBe(HttpStatus.NOT_FOUND);
       }
     });
   });
@@ -699,9 +688,7 @@ describe('AuthService', () => {
   describe('challenge TOCTOU', () => {
     it('rejects challenge when atomic consume fails (count=0)', async () => {
       const prisma = buildPrismaService({
-        challengeFindUnique: jest
-          .fn()
-          .mockResolvedValue(mockChallengeRecord),
+        challengeFindUnique: jest.fn().mockResolvedValue(mockChallengeRecord),
       });
       (prisma.authChallenge.updateMany as jest.Mock).mockResolvedValue({
         count: 0,

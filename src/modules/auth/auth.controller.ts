@@ -1,12 +1,35 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, UseFilters, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiConflictResponse, ApiCreatedResponse, ApiForbiddenResponse, ApiNotFoundResponse, ApiOkResponse, ApiTags, ApiUnauthorizedResponse } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+  UseFilters,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiConflictResponse,
+  ApiCreatedResponse,
+  ApiForbiddenResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiTags,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Public } from '../security/decorators/public.decorator';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { ChallengeRequestDto } from './dto/challenge-request.dto';
 import { ChallengeResponseDto } from './dto/challenge-response.dto';
-import { DeviceListResponseDto, DeviceRevokeResponseDto } from './dto/device-response.dto';
+import {
+  DeviceListResponseDto,
+  DeviceRevokeResponseDto,
+} from './dto/device-response.dto';
 import { LoginRequestDto } from './dto/login-request.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
 import { LogoutRequestDto } from './dto/logout-request.dto';
@@ -41,7 +64,10 @@ export class AuthController {
     schema: {
       example: {
         success: false,
-        error: { code: 'USERNAME_ALREADY_EXISTS', message: 'Username already exists' },
+        error: {
+          code: 'USERNAME_ALREADY_EXISTS',
+          message: 'Username already exists',
+        },
       },
     },
   })
@@ -105,7 +131,10 @@ export class AuthController {
     schema: {
       example: {
         success: false,
-        error: { code: 'INVALID_REFRESH_TOKEN', message: 'Invalid refresh token' },
+        error: {
+          code: 'INVALID_REFRESH_TOKEN',
+          message: 'Invalid refresh token',
+        },
       },
     },
   })
@@ -124,9 +153,7 @@ export class AuthController {
       },
     },
   })
-  async logout(
-    @Body() dto: LogoutRequestDto,
-  ): Promise<{ message: string }> {
+  async logout(@Body() dto: LogoutRequestDto): Promise<{ message: string }> {
     return this.authService.logout(dto.refreshToken);
   }
 
@@ -195,7 +222,10 @@ export class AuthController {
     schema: {
       example: {
         success: false,
-        error: { code: 'CANNOT_REMOVE_CURRENT_DEVICE', message: 'Current device cannot be removed' },
+        error: {
+          code: 'CANNOT_REMOVE_CURRENT_DEVICE',
+          message: 'Current device cannot be removed',
+        },
       },
     },
   })

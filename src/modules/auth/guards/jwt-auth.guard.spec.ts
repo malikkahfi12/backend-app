@@ -28,7 +28,7 @@ function createContext(authHeader?: string): ExecutionContext {
         ({
           header: (name: string) =>
             name === 'authorization' ? authHeader : undefined,
-        } as unknown as Request),
+        }) as unknown as Request,
     }),
   } as unknown as ExecutionContext;
 }
@@ -40,8 +40,7 @@ function createGuard(overrides?: {
 }): JwtAuthGuard {
   const jwtService = {
     verifyAsync:
-      overrides?.verifyAsync ??
-      (jest.fn().mockResolvedValue(ACCESS_PAYLOAD)),
+      overrides?.verifyAsync ?? jest.fn().mockResolvedValue(ACCESS_PAYLOAD),
   } as unknown as JwtService;
 
   const prismaService = {
@@ -117,9 +116,7 @@ describe('JwtAuthGuard', () => {
   it('throws INVALID_ACCESS_TOKEN for malformed JWT', async () => {
     const context = createContext('Bearer bad.token');
     const guard = createGuard({
-      verifyAsync: jest
-        .fn()
-        .mockRejectedValue(new Error('jwt malformed')),
+      verifyAsync: jest.fn().mockRejectedValue(new Error('jwt malformed')),
     });
 
     try {
@@ -134,9 +131,7 @@ describe('JwtAuthGuard', () => {
   it('throws INVALID_ACCESS_TOKEN for expired JWT', async () => {
     const context = createContext('Bearer expired.token');
     const guard = createGuard({
-      verifyAsync: jest
-        .fn()
-        .mockRejectedValue(new Error('jwt expired')),
+      verifyAsync: jest.fn().mockRejectedValue(new Error('jwt expired')),
     });
 
     try {

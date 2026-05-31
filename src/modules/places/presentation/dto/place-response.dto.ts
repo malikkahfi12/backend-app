@@ -38,7 +38,7 @@ export class SearchPlaceResultDto {
   type!: string;
 
   @ApiProperty({
-    example: 'maptiler',
+    example: 'stadiamaps',
     description: 'Data provider name',
   })
   provider!: string;
@@ -70,7 +70,7 @@ export class ReversePlaceResultDto {
   longitude!: number;
 
   @ApiProperty({
-    example: 'maptiler',
+    example: 'stadiamaps',
     description: 'Data provider name',
   })
   provider!: string;

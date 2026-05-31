@@ -57,9 +57,7 @@ export class TokenService {
   }
 
   getAccessTokenExpirySeconds(): number {
-    return parseExpiryToSeconds(
-      this.authConfigService.getAccessTokenExpiry(),
-    );
+    return parseExpiryToSeconds(this.authConfigService.getAccessTokenExpiry());
   }
 
   getRefreshTokenExpiresAt(): Date {

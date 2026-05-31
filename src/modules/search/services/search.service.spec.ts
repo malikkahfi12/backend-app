@@ -38,7 +38,7 @@ function mockPlaceResult(overrides?: Record<string, unknown>) {
     latitude: -6.902,
     longitude: 107.618,
     type: 'poi',
-    provider: 'maptiler',
+    provider: 'stadiamaps',
     ...overrides,
   };
 }

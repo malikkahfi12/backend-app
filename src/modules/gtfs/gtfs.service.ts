@@ -101,7 +101,6 @@ export class GtfsService {
 
     try {
       const summary = await this.prismaService.$transaction(
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         async (tx) => {
           let agencyCount = 0;
           const agencyMap = new Map<string, string>();

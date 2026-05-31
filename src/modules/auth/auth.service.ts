@@ -18,8 +18,19 @@ const CHALLENGE_BYTES = 32;
 const CHALLENGE_TTL_MINUTES = 5;
 
 const RESERVED_USERNAMES = new Set([
-  'admin', 'root', 'system', 'support', 'patheo', 'api', 'auth',
-  'moderator', 'mod', 'null', 'undefined', 'owner', 'staff',
+  'admin',
+  'root',
+  'system',
+  'support',
+  'patheo',
+  'api',
+  'auth',
+  'moderator',
+  'mod',
+  'null',
+  'undefined',
+  'owner',
+  'staff',
 ]);
 
 @Injectable()
@@ -158,9 +169,7 @@ export class AuthService implements OnModuleInit {
     }
 
     const challenge = randomBytes(CHALLENGE_BYTES).toString('base64url');
-    const expiresAt = new Date(
-      Date.now() + CHALLENGE_TTL_MINUTES * 60 * 1000,
-    );
+    const expiresAt = new Date(Date.now() + CHALLENGE_TTL_MINUTES * 60 * 1000);
 
     const record = await this.prismaService.authChallenge.create({
       data: {
@@ -180,15 +189,12 @@ export class AuthService implements OnModuleInit {
     };
   }
 
-  async completeChallenge(
-    dto: LoginRequestDto,
-  ): Promise<LoginResponseDto> {
+  async completeChallenge(dto: LoginRequestDto): Promise<LoginResponseDto> {
     const { challengeId, signature } = dto;
 
-    const challengeRecord =
-      await this.prismaService.authChallenge.findUnique({
-        where: { id: challengeId },
-      });
+    const challengeRecord = await this.prismaService.authChallenge.findUnique({
+      where: { id: challengeId },
+    });
 
     if (!challengeRecord) {
       throw new AuthException(
@@ -285,9 +291,7 @@ export class AuthService implements OnModuleInit {
     };
   }
 
-  async refreshToken(
-    rawToken: string,
-  ): Promise<{
+  async refreshToken(rawToken: string): Promise<{
     accessToken: string;
     refreshToken: string;
     accessTokenExpiresIn: number;
@@ -545,7 +549,11 @@ export class AuthService implements OnModuleInit {
         publicKeyBase64url.replace(/-/g, '+').replace(/_/g, '/'),
         'base64',
       );
-      return this.sodium.crypto_sign_verify_detached(signature, message, publicKey);
+      return this.sodium.crypto_sign_verify_detached(
+        signature,
+        message,
+        publicKey,
+      );
     } catch {
       return false;
     }

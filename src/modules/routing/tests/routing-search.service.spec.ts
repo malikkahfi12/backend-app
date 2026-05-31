@@ -11,8 +11,8 @@ describe('RoutingSearchService', () => {
   const mockConfigService = {
     get: jest.fn((key: string) => {
       const config: Record<string, string> = {
-        'maptiler.apiKey': 'test-api-key',
-        'maptiler.geocodingBaseUrl': 'https://api.maptiler.com',
+        'stadiamaps.apiKey': 'test-api-key',
+        'stadiamaps.baseUrl': 'https://api.stadiamaps.com',
       };
       return config[key];
     }),
@@ -66,7 +66,11 @@ describe('RoutingSearchService', () => {
 
   beforeEach(() => {
     global.fetch = jest.fn().mockRejectedValue(new Error('no fetch'));
-    service = new RoutingSearchService(mockGraphService, mockPrismaService, mockConfigService);
+    service = new RoutingSearchService(
+      mockGraphService,
+      mockPrismaService,
+      mockConfigService,
+    );
     jest.clearAllMocks();
   });
 
@@ -494,8 +498,8 @@ describe('Route leg geometry', () => {
   const mockConfigService = {
     get: jest.fn((key: string) => {
       const config: Record<string, string> = {
-        'maptiler.apiKey': 'test-api-key',
-        'maptiler.geocodingBaseUrl': 'https://api.maptiler.com',
+        'stadiamaps.apiKey': 'test-api-key',
+        'stadiamaps.baseUrl': 'https://api.stadiamaps.com',
       };
       return config[key];
     }),
@@ -565,7 +569,11 @@ describe('Route leg geometry', () => {
 
     jest.spyOn(mockGraphService, 'getGraph').mockReturnValue(graph);
 
-    const service = new RoutingSearchService(mockGraphService, mockPrisma, mockConfigService);
+    const service = new RoutingSearchService(
+      mockGraphService,
+      mockPrisma,
+      mockConfigService,
+    );
     const result = await service.searchRoute('stop-a', 'stop-b');
 
     expect(result.options[0].legs[0].geometry).toBeDefined();
@@ -608,7 +616,11 @@ describe('Route leg geometry', () => {
 
     jest.spyOn(mockGraphService, 'getGraph').mockReturnValue(graph);
 
-    const service = new RoutingSearchService(mockGraphService, mockPrisma, mockConfigService);
+    const service = new RoutingSearchService(
+      mockGraphService,
+      mockPrisma,
+      mockConfigService,
+    );
     const result = await service.searchRoute('stop-a', 'stop-b');
 
     expect(result.options[0].legs[0].geometry).toBeDefined();
@@ -647,7 +659,11 @@ describe('Route leg geometry', () => {
 
     jest.spyOn(mockGraphService, 'getGraph').mockReturnValue(graph);
 
-    const service = new RoutingSearchService(mockGraphService, mockPrisma, mockConfigService);
+    const service = new RoutingSearchService(
+      mockGraphService,
+      mockPrisma,
+      mockConfigService,
+    );
     const result = await service.searchRoute('stop-a', 'stop-b');
 
     expect(result.options[0].legs[0].geometry).toBeDefined();
@@ -711,7 +727,11 @@ describe('Route leg geometry', () => {
 
     jest.spyOn(mockGraphService, 'getGraph').mockReturnValue(graph);
 
-    const service = new RoutingSearchService(mockGraphService, mockPrisma, mockConfigService);
+    const service = new RoutingSearchService(
+      mockGraphService,
+      mockPrisma,
+      mockConfigService,
+    );
     const result = await service.searchRoute('stop-a', 'stop-b');
 
     const geometry = result.options[0].legs[0].geometry;
@@ -762,7 +782,11 @@ describe('Route leg geometry', () => {
 
     jest.spyOn(mockGraphService, 'getGraph').mockReturnValue(graph);
 
-    const service = new RoutingSearchService(mockGraphService, mockPrisma, mockConfigService);
+    const service = new RoutingSearchService(
+      mockGraphService,
+      mockPrisma,
+      mockConfigService,
+    );
     const result = await service.searchRoute('stop-a', 'stop-b');
 
     expect(result.options[0].legs[0].geometry).toBeDefined();
@@ -773,7 +797,7 @@ describe('Route leg geometry', () => {
     ]);
   });
 
-  it('WALK leg < 100m uses straight-line without calling MapTiler', async () => {
+  it('WALK leg < 100m uses straight-line without calling Stadia Maps', async () => {
     const fetchSpy = jest.spyOn(global, 'fetch');
 
     const mockPrisma = {} as unknown as PrismaService;
@@ -802,7 +826,11 @@ describe('Route leg geometry', () => {
 
     jest.spyOn(mockGraphService, 'getGraph').mockReturnValue(graph);
 
-    const service = new RoutingSearchService(mockGraphService, mockPrisma, mockConfigService);
+    const service = new RoutingSearchService(
+      mockGraphService,
+      mockPrisma,
+      mockConfigService,
+    );
     const result = await service.searchRoute('stop-a', 'stop-b');
 
     expect(result.options[0].legs[0].geometry).toBeDefined();
@@ -811,15 +839,15 @@ describe('Route leg geometry', () => {
       [106.8143, -6.1375],
     ]);
 
-    const mapTilerCalls = (fetchSpy as jest.Mock).mock.calls.filter(
-      (call: unknown[]) => String(call[0]).includes('maptiler'),
+    const stadiaMapsCalls = (fetchSpy as jest.Mock).mock.calls.filter(
+      (call: unknown[]) => String(call[0]).includes('stadiamaps'),
     );
-    expect(mapTilerCalls).toHaveLength(0);
+    expect(stadiaMapsCalls).toHaveLength(0);
     fetchSpy.mockRestore();
   });
 
-  it('WALK leg >= 100m calls MapTiler and returns walking geometry', async () => {
-    const mockMaptilerGeometry = {
+  it('WALK leg >= 100m calls Stadia Maps and returns walking geometry', async () => {
+    const mockStadiaMapsGeometry = {
       type: 'LineString',
       coordinates: [
         [106.8203, -6.1675],
@@ -828,12 +856,14 @@ describe('Route leg geometry', () => {
         [106.8143, -6.1375],
       ],
     };
+    const mockPolyline6 = 'v{lwJwkxvjEg{CfpAozDn}@gzn@ffF';
 
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: jest.fn().mockResolvedValue({
-        code: 'Ok',
-        routes: [{ geometry: mockMaptilerGeometry }],
+        trip: {
+          legs: [{ shape: mockPolyline6 }],
+        },
       }),
     });
 
@@ -863,24 +893,30 @@ describe('Route leg geometry', () => {
 
     jest.spyOn(mockGraphService, 'getGraph').mockReturnValue(graph);
 
-    const service = new RoutingSearchService(mockGraphService, mockPrisma, mockConfigService);
+    const service = new RoutingSearchService(
+      mockGraphService,
+      mockPrisma,
+      mockConfigService,
+    );
     const result = await service.searchRoute('stop-a', 'stop-b');
 
-    expect(result.options[0].legs[0].geometry).toEqual(mockMaptilerGeometry);
+    expect(result.options[0].legs[0].geometry).toEqual(mockStadiaMapsGeometry);
     expect(global.fetch).toHaveBeenCalledTimes(1);
 
     const fetchUrl = (global.fetch as jest.Mock).mock.calls[0][0] as string;
-    expect(fetchUrl).toContain('/routes/walking/');
-    expect(fetchUrl).toContain('geometries=geojson');
-    expect(fetchUrl).toContain('key=test-api-key');
+    const fetchOpts = (global.fetch as jest.Mock).mock
+      .calls[0][1] as RequestInit;
+    expect(fetchUrl).toContain('/route/v1?api_key=test-api-key');
+    expect(fetchOpts.method).toBe('POST');
+    expect(fetchOpts.body).toContain('"pedestrian"');
+    expect(fetchOpts.body).toContain('"polyline6"');
   });
 
-  it('WALK leg >= 100m falls back to straight-line when MapTiler returns NoRoute', async () => {
+  it('WALK leg >= 100m falls back to straight-line when Stadia Maps returns NoRoute', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: jest.fn().mockResolvedValue({
-        code: 'NoRoute',
-        routes: [],
+        trip: { legs: [] },
       }),
     });
 
@@ -910,7 +946,11 @@ describe('Route leg geometry', () => {
 
     jest.spyOn(mockGraphService, 'getGraph').mockReturnValue(graph);
 
-    const service = new RoutingSearchService(mockGraphService, mockPrisma, mockConfigService);
+    const service = new RoutingSearchService(
+      mockGraphService,
+      mockPrisma,
+      mockConfigService,
+    );
     const result = await service.searchRoute('stop-a', 'stop-b');
 
     expect(result.options[0].legs[0].geometry).toBeDefined();
@@ -920,7 +960,7 @@ describe('Route leg geometry', () => {
     ]);
   });
 
-  it('WALK leg >= 100m falls back to straight-line when MapTiler returns http error', async () => {
+  it('WALK leg >= 100m falls back to straight-line when Stadia Maps returns http error', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: false,
       status: 401,
@@ -953,7 +993,11 @@ describe('Route leg geometry', () => {
 
     jest.spyOn(mockGraphService, 'getGraph').mockReturnValue(graph);
 
-    const service = new RoutingSearchService(mockGraphService, mockPrisma, mockConfigService);
+    const service = new RoutingSearchService(
+      mockGraphService,
+      mockPrisma,
+      mockConfigService,
+    );
     const result = await service.searchRoute('stop-a', 'stop-b');
 
     expect(result.options[0].legs[0].geometry).toBeDefined();
@@ -992,7 +1036,11 @@ describe('Route leg geometry', () => {
 
     jest.spyOn(mockGraphService, 'getGraph').mockReturnValue(graph);
 
-    const service = new RoutingSearchService(mockGraphService, mockPrisma, mockConfigService);
+    const service = new RoutingSearchService(
+      mockGraphService,
+      mockPrisma,
+      mockConfigService,
+    );
     const result = await service.searchRoute('stop-a', 'stop-b');
 
     expect(result.options[0].legs[0].geometry).toBeDefined();
@@ -1002,7 +1050,7 @@ describe('Route leg geometry', () => {
     ]);
   });
 
-  it('WALK leg without distanceMeters calls MapTiler and falls back on failure', async () => {
+  it('WALK leg without distanceMeters calls Stadia Maps and falls back on failure', async () => {
     global.fetch = jest.fn().mockRejectedValue(new Error('no network'));
 
     const mockPrisma = {} as unknown as PrismaService;
@@ -1030,7 +1078,11 @@ describe('Route leg geometry', () => {
 
     jest.spyOn(mockGraphService, 'getGraph').mockReturnValue(graph);
 
-    const service = new RoutingSearchService(mockGraphService, mockPrisma, mockConfigService);
+    const service = new RoutingSearchService(
+      mockGraphService,
+      mockPrisma,
+      mockConfigService,
+    );
     const result = await service.searchRoute('stop-a', 'stop-b');
 
     expect(result.options[0].legs[0].geometry).toBeDefined();

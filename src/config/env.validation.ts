@@ -81,11 +81,11 @@ class EnvironmentVariables {
 
   @IsString()
   @IsNotEmpty()
-  MAPTILER_API_KEY!: string;
+  STADIAMAPS_API_KEY!: string;
 
   @IsString()
   @IsNotEmpty()
-  MAPTILER_GEOCODING_BASE_URL!: string;
+  STADIAMAPS_BASE_URL!: string;
 }
 
 export function validateEnv(

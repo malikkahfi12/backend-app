@@ -15,7 +15,8 @@ function createService(): AuthConfigService {
       if (key === 'auth.accessSecret') return mockAuthConfig.accessSecret;
       if (key === 'auth.accessExpiresIn') return mockAuthConfig.accessExpiresIn;
       if (key === 'auth.refreshSecret') return mockAuthConfig.refreshSecret;
-      if (key === 'auth.refreshExpiresIn') return mockAuthConfig.refreshExpiresIn;
+      if (key === 'auth.refreshExpiresIn')
+        return mockAuthConfig.refreshExpiresIn;
       return undefined;
     }),
   } as unknown as ConfigService<AppConfig, true>;
@@ -26,23 +27,17 @@ function createService(): AuthConfigService {
 describe('AuthConfigService', () => {
   it('returns access token secret', () => {
     const service = createService();
-    expect(service.getAccessTokenSecret()).toBe(
-      mockAuthConfig.accessSecret,
-    );
+    expect(service.getAccessTokenSecret()).toBe(mockAuthConfig.accessSecret);
   });
 
   it('returns access token expiry', () => {
     const service = createService();
-    expect(service.getAccessTokenExpiry()).toBe(
-      mockAuthConfig.accessExpiresIn,
-    );
+    expect(service.getAccessTokenExpiry()).toBe(mockAuthConfig.accessExpiresIn);
   });
 
   it('returns refresh token secret', () => {
     const service = createService();
-    expect(service.getRefreshTokenSecret()).toBe(
-      mockAuthConfig.refreshSecret,
-    );
+    expect(service.getRefreshTokenSecret()).toBe(mockAuthConfig.refreshSecret);
   });
 
   it('returns refresh token expiry', () => {
