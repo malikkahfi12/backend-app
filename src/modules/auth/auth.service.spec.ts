@@ -1,7 +1,9 @@
 import { HttpStatus } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
 import { AuthException } from './exceptions/auth.exception';
 import { AuthService } from './auth.service';
+import { GoogleAuthService } from './services/google-auth.service';
 import { TokenService } from './services/token.service';
 
 const ACCESS_TOKEN = 'eyJhbGciOiJIUzI1NiIs.access-token';
@@ -95,6 +97,11 @@ function createMockTx(
 function defaultTokenService(): TokenService {
   return {
     signAccessToken: jest.fn().mockResolvedValue(ACCESS_TOKEN),
+    signRecoveryToken: jest.fn().mockResolvedValue('signed-recovery-jwt'),
+    verifyRecoveryToken: jest.fn().mockResolvedValue({
+      sub: 'user-uuid',
+      purpose: 'account_recovery',
+    }),
     generateRefreshToken: jest.fn().mockResolvedValue({
       rawToken: REFRESH_TOKEN,
       tokenHash: TOKEN_HASH,
@@ -105,6 +112,18 @@ function defaultTokenService(): TokenService {
       .fn()
       .mockReturnValue(new Date(Date.now() + 86400000)),
   } as unknown as TokenService;
+}
+
+function defaultGoogleAuthService(): GoogleAuthService {
+  return {
+    verifyIdToken: jest.fn().mockResolvedValue({
+      sub: 'google-user-123',
+      email: 'user@gmail.com',
+      emailVerified: true,
+      name: 'Test User',
+      picture: 'https://example.com/photo.jpg',
+    }),
+  } as unknown as GoogleAuthService;
 }
 
 interface PrismaMocks {
@@ -159,16 +178,39 @@ function buildPrismaService(mocks: PrismaMocks = {}): PrismaService {
       deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
       update: jest.fn().mockResolvedValue(undefined),
     } as unknown,
+    authIdentity: {
+      findUnique: jest.fn().mockResolvedValue(null),
+      create: jest.fn().mockResolvedValue({
+        id: 'identity-uuid',
+        userId: 'user-uuid',
+        provider: 'google',
+        providerUserId: 'google-user-123',
+        email: 'user@gmail.com',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }),
+      findUniqueOrThrow: jest.fn().mockResolvedValue({
+        id: 'identity-uuid',
+        userId: 'user-uuid',
+        provider: 'google',
+        providerUserId: 'google-user-123',
+        email: 'user@gmail.com',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }),
+    } as unknown,
   } as unknown as PrismaService;
 }
 
 async function makeService(
   mocks: PrismaMocks = {},
   tokenService?: TokenService,
+  googleAuthService?: GoogleAuthService,
 ): Promise<AuthService> {
   const service = new AuthService(
     buildPrismaService(mocks),
     tokenService ?? defaultTokenService(),
+    googleAuthService ?? defaultGoogleAuthService(),
   );
   await service.onModuleInit();
   return service;
@@ -281,7 +323,7 @@ describe('AuthService', () => {
       const prisma = buildPrismaService({
         challengeFindUnique: jest.fn().mockResolvedValue(mockChallengeRecord),
       });
-      const service = new AuthService(prisma, defaultTokenService());
+      const service = new AuthService(prisma, defaultTokenService(), defaultGoogleAuthService());
       await service.onModuleInit();
       const result = await service.completeChallenge(loginDto);
 
@@ -337,7 +379,7 @@ describe('AuthService', () => {
         count: 0,
       });
 
-      const service = new AuthService(prisma, defaultTokenService());
+      const service = new AuthService(prisma, defaultTokenService(), defaultGoogleAuthService());
       await service.onModuleInit();
 
       try {
@@ -409,7 +451,7 @@ describe('AuthService', () => {
       } as unknown as PrismaService;
 
       const tokenSvc = defaultTokenService();
-      const service = new AuthService(prisma, tokenSvc);
+      const service = new AuthService(prisma, tokenSvc, defaultGoogleAuthService());
       await service.onModuleInit();
       const result = await service.refreshToken(REFRESH_TOKEN);
 
@@ -441,7 +483,7 @@ describe('AuthService', () => {
         } as unknown,
       } as unknown as PrismaService;
 
-      const service = new AuthService(prisma, defaultTokenService());
+      const service = new AuthService(prisma, defaultTokenService(), defaultGoogleAuthService());
       await service.onModuleInit();
       const result = await service.logout(REFRESH_TOKEN);
 
@@ -460,7 +502,7 @@ describe('AuthService', () => {
         } as unknown,
       } as unknown as PrismaService;
 
-      const service = new AuthService(prisma, defaultTokenService());
+      const service = new AuthService(prisma, defaultTokenService(), defaultGoogleAuthService());
       await service.onModuleInit();
       const result = await service.logout(REFRESH_TOKEN);
 
@@ -512,7 +554,7 @@ describe('AuthService', () => {
         secondDevice,
       ]);
 
-      const service = new AuthService(prisma, defaultTokenService());
+      const service = new AuthService(prisma, defaultTokenService(), defaultGoogleAuthService());
       await service.onModuleInit();
       const result = await service.listDevices('user-uuid', 'device-uuid');
 
@@ -529,7 +571,7 @@ describe('AuthService', () => {
         secondDevice,
       ]);
 
-      const service = new AuthService(prisma, defaultTokenService());
+      const service = new AuthService(prisma, defaultTokenService(), defaultGoogleAuthService());
       await service.onModuleInit();
       const result = await service.listDevices('user-uuid', 'other-device');
 
@@ -541,7 +583,7 @@ describe('AuthService', () => {
       const prisma = buildPrismaService();
       (prisma.userDevice.findMany as jest.Mock).mockResolvedValue([]);
 
-      const service = new AuthService(prisma, defaultTokenService());
+      const service = new AuthService(prisma, defaultTokenService(), defaultGoogleAuthService());
       await service.onModuleInit();
       const result = await service.listDevices('user-uuid', 'device-uuid');
 
@@ -552,7 +594,7 @@ describe('AuthService', () => {
   describe('revokeDevice', () => {
     it('revokes device refresh tokens successfully', async () => {
       const prisma = buildPrismaService();
-      const service = new AuthService(prisma, defaultTokenService());
+      const service = new AuthService(prisma, defaultTokenService(), defaultGoogleAuthService());
       await service.onModuleInit();
       const result = await service.revokeDevice(
         'user-uuid',
@@ -573,7 +615,7 @@ describe('AuthService', () => {
 
     it('sets revokedAt on the device record', async () => {
       const prisma = buildPrismaService();
-      const service = new AuthService(prisma, defaultTokenService());
+      const service = new AuthService(prisma, defaultTokenService(), defaultGoogleAuthService());
       await service.onModuleInit();
       await service.revokeDevice('user-uuid', 'device-2-uuid', 'device-uuid');
 
@@ -694,7 +736,7 @@ describe('AuthService', () => {
         count: 0,
       });
 
-      const service = new AuthService(prisma, defaultTokenService());
+      const service = new AuthService(prisma, defaultTokenService(), defaultGoogleAuthService());
       await service.onModuleInit();
 
       try {
@@ -741,7 +783,7 @@ describe('AuthService', () => {
         count: 3,
       });
 
-      const service = new AuthService(prisma, defaultTokenService());
+      const service = new AuthService(prisma, defaultTokenService(), defaultGoogleAuthService());
       await service.onModuleInit();
       const result = await service.cleanupExpiredRecords();
 
@@ -751,12 +793,564 @@ describe('AuthService', () => {
 
     it('returns zero counts when nothing to clean', async () => {
       const prisma = buildPrismaService();
-      const service = new AuthService(prisma, defaultTokenService());
+      const service = new AuthService(prisma, defaultTokenService(), defaultGoogleAuthService());
       await service.onModuleInit();
       const result = await service.cleanupExpiredRecords();
 
       expect(result.challenges).toBe(0);
       expect(result.refreshTokens).toBe(0);
+    });
+  });
+
+  describe('connectGoogleAccount', () => {
+    const userId = 'user-uuid';
+    const idToken = 'valid-google-id-token';
+
+    const mockGoogleIdentity = {
+      sub: 'google-user-123',
+      email: 'user@gmail.com',
+      emailVerified: true,
+      name: 'Test User',
+      picture: 'https://example.com/photo.jpg',
+    };
+
+    const mockAuthIdentity = {
+      id: 'identity-uuid',
+      userId: 'user-uuid',
+      provider: 'google',
+      providerUserId: 'google-user-123',
+      email: 'user@gmail.com',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    it('links a Google account and returns the identity', async () => {
+      const googleAuth = defaultGoogleAuthService();
+      (googleAuth.verifyIdToken as jest.Mock).mockResolvedValue(
+        mockGoogleIdentity,
+      );
+
+      const prisma = buildPrismaService();
+      (prisma.authIdentity.findUnique as jest.Mock).mockResolvedValue(null);
+      (prisma.authIdentity.create as jest.Mock).mockResolvedValue(
+        mockAuthIdentity,
+      );
+
+      const service = new AuthService(
+        prisma,
+        defaultTokenService(),
+        googleAuth,
+      );
+      await service.onModuleInit();
+
+      const result = await service.connectGoogleAccount(userId, idToken);
+
+      expect(result.data).toEqual({
+        provider: 'google',
+        providerUserId: 'google-user-123',
+        email: 'user@gmail.com',
+      });
+      expect(googleAuth.verifyIdToken).toHaveBeenCalledWith(idToken);
+      expect(prisma.authIdentity.create).toHaveBeenCalledWith({
+        data: {
+          userId,
+          provider: 'google',
+          providerUserId: 'google-user-123',
+          email: 'user@gmail.com',
+        },
+      });
+    });
+
+    it('returns idempotent response when same Google account is already linked to same user', async () => {
+      const googleAuth = defaultGoogleAuthService();
+      (googleAuth.verifyIdToken as jest.Mock).mockResolvedValue(
+        mockGoogleIdentity,
+      );
+
+      const prisma = buildPrismaService();
+      (prisma.authIdentity.findUnique as jest.Mock).mockResolvedValue(
+        mockAuthIdentity,
+      );
+
+      const service = new AuthService(
+        prisma,
+        defaultTokenService(),
+        googleAuth,
+      );
+      await service.onModuleInit();
+
+      const result = await service.connectGoogleAccount(userId, idToken);
+
+      expect(result.data).toEqual({
+        provider: 'google',
+        providerUserId: 'google-user-123',
+        email: 'user@gmail.com',
+      });
+      expect(prisma.authIdentity.create).not.toHaveBeenCalled();
+    });
+
+    it('throws GOOGLE_ACCOUNT_ALREADY_LINKED when Google account is linked to a different user', async () => {
+      const googleAuth = defaultGoogleAuthService();
+      (googleAuth.verifyIdToken as jest.Mock).mockResolvedValue(
+        mockGoogleIdentity,
+      );
+
+      const prisma = buildPrismaService();
+      (prisma.authIdentity.findUnique as jest.Mock).mockResolvedValue({
+        ...mockAuthIdentity,
+        userId: 'other-user-uuid',
+      });
+
+      const service = new AuthService(
+        prisma,
+        defaultTokenService(),
+        googleAuth,
+      );
+      await service.onModuleInit();
+
+      try {
+        await service.connectGoogleAccount(userId, idToken);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(AuthException);
+        expect((error as AuthException).code).toBe(
+          'GOOGLE_ACCOUNT_ALREADY_LINKED',
+        );
+        expect((error as AuthException).getStatus()).toBe(HttpStatus.CONFLICT);
+      }
+    });
+
+    it('throws GOOGLE_EMAIL_NOT_VERIFIED when Google email is not verified', async () => {
+      const googleAuth = defaultGoogleAuthService();
+      (googleAuth.verifyIdToken as jest.Mock).mockResolvedValue({
+        ...mockGoogleIdentity,
+        emailVerified: false,
+      });
+
+      const service = new AuthService(
+        buildPrismaService(),
+        defaultTokenService(),
+        googleAuth,
+      );
+      await service.onModuleInit();
+
+      try {
+        await service.connectGoogleAccount(userId, idToken);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(AuthException);
+        expect((error as AuthException).code).toBe(
+          'GOOGLE_EMAIL_NOT_VERIFIED',
+        );
+        expect((error as AuthException).getStatus()).toBe(
+          HttpStatus.FORBIDDEN,
+        );
+      }
+    });
+
+    it('handles P2002 race condition — same user (idempotent)', async () => {
+      const googleAuth = defaultGoogleAuthService();
+      (googleAuth.verifyIdToken as jest.Mock).mockResolvedValue(
+        mockGoogleIdentity,
+      );
+
+      const prisma = buildPrismaService();
+      (prisma.authIdentity.findUnique as jest.Mock).mockResolvedValue(null);
+
+      const p2002Error = new Prisma.PrismaClientKnownRequestError(
+        'Unique constraint failed',
+        { code: 'P2002', clientVersion: '7.8.0' },
+      );
+      (prisma.authIdentity.create as jest.Mock).mockRejectedValue(p2002Error);
+
+      (prisma.authIdentity.findUniqueOrThrow as jest.Mock).mockResolvedValue(
+        mockAuthIdentity,
+      );
+
+      const service = new AuthService(
+        prisma,
+        defaultTokenService(),
+        googleAuth,
+      );
+      await service.onModuleInit();
+
+      const result = await service.connectGoogleAccount(userId, idToken);
+
+      expect(result.data).toEqual({
+        provider: 'google',
+        providerUserId: 'google-user-123',
+        email: 'user@gmail.com',
+      });
+    });
+
+    it('handles P2002 race condition — different user (conflict)', async () => {
+      const googleAuth = defaultGoogleAuthService();
+      (googleAuth.verifyIdToken as jest.Mock).mockResolvedValue(
+        mockGoogleIdentity,
+      );
+
+      const prisma = buildPrismaService();
+      (prisma.authIdentity.findUnique as jest.Mock).mockResolvedValue(null);
+
+      const p2002Error = new Prisma.PrismaClientKnownRequestError(
+        'Unique constraint failed',
+        { code: 'P2002', clientVersion: '7.8.0' },
+      );
+      (prisma.authIdentity.create as jest.Mock).mockRejectedValue(p2002Error);
+
+      (prisma.authIdentity.findUniqueOrThrow as jest.Mock).mockResolvedValue({
+        ...mockAuthIdentity,
+        userId: 'other-user-uuid',
+      });
+
+      const service = new AuthService(
+        prisma,
+        defaultTokenService(),
+        googleAuth,
+      );
+      await service.onModuleInit();
+
+      try {
+        await service.connectGoogleAccount(userId, idToken);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(AuthException);
+        expect((error as AuthException).code).toBe(
+          'GOOGLE_ACCOUNT_ALREADY_LINKED',
+        );
+      }
+    });
+  });
+
+  describe('recoverWithGoogle', () => {
+    const idToken = 'valid-google-id-token';
+
+    const mockGoogleIdentity = {
+      sub: 'google-user-123',
+      email: 'user@gmail.com',
+      emailVerified: true,
+      name: 'Test User',
+      picture: 'https://example.com/photo.jpg',
+    };
+
+    const mockAuthIdentityWithUser = {
+      id: 'identity-uuid',
+      userId: 'user-uuid',
+      provider: 'google',
+      providerUserId: 'google-user-123',
+      email: 'user@gmail.com',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      user: {
+        id: 'user-uuid',
+        username: 'malik',
+        displayName: 'Malik',
+        avatarUrl: null,
+        isActive: true,
+        createdAt: new Date('2025-05-29'),
+        updatedAt: new Date('2025-05-29'),
+      },
+    };
+
+    it('returns recovery token for valid linked Google account', async () => {
+      const googleAuth = defaultGoogleAuthService();
+      (googleAuth.verifyIdToken as jest.Mock).mockResolvedValue(
+        mockGoogleIdentity,
+      );
+
+      const tokenSvc = defaultTokenService();
+
+      const prisma = buildPrismaService();
+      (prisma.authIdentity.findUnique as jest.Mock).mockResolvedValue(
+        mockAuthIdentityWithUser,
+      );
+
+      const service = new AuthService(
+        prisma,
+        tokenSvc,
+        googleAuth,
+      );
+      await service.onModuleInit();
+
+      const result = await service.recoverWithGoogle(idToken);
+
+      expect(result.data.recoveryToken).toBe('signed-recovery-jwt');
+      expect(googleAuth.verifyIdToken).toHaveBeenCalledWith(idToken);
+      expect(tokenSvc.signRecoveryToken).toHaveBeenCalledWith(
+        'user-uuid',
+        'account_recovery',
+      );
+    });
+
+    it('throws GOOGLE_EMAIL_NOT_VERIFIED for unverified email', async () => {
+      const googleAuth = defaultGoogleAuthService();
+      (googleAuth.verifyIdToken as jest.Mock).mockResolvedValue({
+        ...mockGoogleIdentity,
+        emailVerified: false,
+      });
+
+      const service = new AuthService(
+        buildPrismaService(),
+        defaultTokenService(),
+        googleAuth,
+      );
+      await service.onModuleInit();
+
+      try {
+        await service.recoverWithGoogle(idToken);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(AuthException);
+        expect((error as AuthException).code).toBe(
+          'GOOGLE_EMAIL_NOT_VERIFIED',
+        );
+        expect((error as AuthException).getStatus()).toBe(
+          HttpStatus.FORBIDDEN,
+        );
+      }
+    });
+
+    it('throws GOOGLE_ACCOUNT_NOT_LINKED when no identity exists', async () => {
+      const googleAuth = defaultGoogleAuthService();
+      (googleAuth.verifyIdToken as jest.Mock).mockResolvedValue(
+        mockGoogleIdentity,
+      );
+
+      const prisma = buildPrismaService();
+      (prisma.authIdentity.findUnique as jest.Mock).mockResolvedValue(null);
+
+      const service = new AuthService(
+        prisma,
+        defaultTokenService(),
+        googleAuth,
+      );
+      await service.onModuleInit();
+
+      try {
+        await service.recoverWithGoogle(idToken);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(AuthException);
+        expect((error as AuthException).code).toBe(
+          'GOOGLE_ACCOUNT_NOT_LINKED',
+        );
+        expect((error as AuthException).getStatus()).toBe(HttpStatus.NOT_FOUND);
+      }
+    });
+
+    it('throws USER_INACTIVE when linked user is inactive', async () => {
+      const googleAuth = defaultGoogleAuthService();
+      (googleAuth.verifyIdToken as jest.Mock).mockResolvedValue(
+        mockGoogleIdentity,
+      );
+
+      const prisma = buildPrismaService();
+      (prisma.authIdentity.findUnique as jest.Mock).mockResolvedValue({
+        ...mockAuthIdentityWithUser,
+        user: { ...mockAuthIdentityWithUser.user, isActive: false },
+      });
+
+      const service = new AuthService(
+        prisma,
+        defaultTokenService(),
+        googleAuth,
+      );
+      await service.onModuleInit();
+
+      try {
+        await service.recoverWithGoogle(idToken);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(AuthException);
+        expect((error as AuthException).code).toBe('USER_INACTIVE');
+        expect((error as AuthException).getStatus()).toBe(
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+    });
+
+    it('propagates Google token verification errors', async () => {
+      const googleAuth = defaultGoogleAuthService();
+      (googleAuth.verifyIdToken as jest.Mock).mockRejectedValue(
+        new AuthException(
+          'INVALID_GOOGLE_TOKEN',
+          'Failed to verify Google ID token',
+          HttpStatus.UNAUTHORIZED,
+        ),
+      );
+
+      const service = new AuthService(
+        buildPrismaService(),
+        defaultTokenService(),
+        googleAuth,
+      );
+      await service.onModuleInit();
+
+      try {
+        await service.recoverWithGoogle(idToken);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(AuthException);
+        expect((error as AuthException).code).toBe('INVALID_GOOGLE_TOKEN');
+      }
+    });
+  });
+
+  describe('registerDeviceAfterRecovery', () => {
+    const authHeader = 'Bearer valid-recovery-token';
+    const dto = {
+      publicKey: 'IADkYx5hPFZe5ckSnBCctH7DYF_vbgMjJeI1zQORrRI',
+      deviceName: 'iPhone 17 Pro',
+      platform: 'ios',
+    };
+
+    it('registers a device and returns challenge data', async () => {
+      const tokenSvc = defaultTokenService();
+      const prisma = buildPrismaService({
+        userFindUnique: jest.fn().mockResolvedValue(mockUser),
+      });
+
+      const service = new AuthService(
+        prisma,
+        tokenSvc,
+        defaultGoogleAuthService(),
+      );
+      await service.onModuleInit();
+
+      const result = await service.registerDeviceAfterRecovery(
+        authHeader,
+        dto,
+      );
+
+      expect(result.data.deviceId).toBe('device-uuid');
+      expect(result.data.challengeId).toBe('challenge-uuid');
+      expect(result.data.challenge).toBeTruthy();
+      expect(result.data.expiresAt).toBeTruthy();
+      expect(tokenSvc.verifyRecoveryToken).toHaveBeenCalledWith(
+        'valid-recovery-token',
+      );
+      expect(prisma.userDevice.create).toHaveBeenCalledWith({
+        data: {
+          userId: 'user-uuid',
+          publicKey: dto.publicKey,
+          deviceName: dto.deviceName,
+          platform: dto.platform,
+          lastSeenAt: expect.any(Date),
+        },
+      });
+    });
+
+    it('throws INVALID_RECOVERY_TOKEN when auth header is missing Bearer prefix', async () => {
+      const service = new AuthService(
+        buildPrismaService(),
+        defaultTokenService(),
+        defaultGoogleAuthService(),
+      );
+      await service.onModuleInit();
+
+      try {
+        await service.registerDeviceAfterRecovery('missing-bearer', dto);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(AuthException);
+        expect((error as AuthException).code).toBe('INVALID_RECOVERY_TOKEN');
+        expect((error as AuthException).getStatus()).toBe(
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+    });
+
+    it('throws INVALID_RECOVERY_TOKEN when token verification fails', async () => {
+      const tokenSvc = defaultTokenService();
+      (tokenSvc.verifyRecoveryToken as jest.Mock).mockRejectedValue(
+        new Error('jwt expired'),
+      );
+
+      const service = new AuthService(
+        buildPrismaService(),
+        tokenSvc,
+        defaultGoogleAuthService(),
+      );
+      await service.onModuleInit();
+
+      try {
+        await service.registerDeviceAfterRecovery(authHeader, dto);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(AuthException);
+        expect((error as AuthException).code).toBe('INVALID_RECOVERY_TOKEN');
+      }
+    });
+
+    it('throws INVALID_RECOVERY_TOKEN when purpose is not account_recovery', async () => {
+      const tokenSvc = defaultTokenService();
+      (tokenSvc.verifyRecoveryToken as jest.Mock).mockResolvedValue({
+        sub: 'user-uuid',
+        purpose: 'wrong-purpose',
+      });
+
+      const service = new AuthService(
+        buildPrismaService(),
+        tokenSvc,
+        defaultGoogleAuthService(),
+      );
+      await service.onModuleInit();
+
+      try {
+        await service.registerDeviceAfterRecovery(authHeader, dto);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(AuthException);
+        expect((error as AuthException).code).toBe('INVALID_RECOVERY_TOKEN');
+      }
+    });
+
+    it('throws USER_INACTIVE when user is not found or inactive', async () => {
+      const prisma = buildPrismaService({
+        userFindUnique: jest.fn().mockResolvedValue({
+          ...mockUser,
+          isActive: false,
+        }),
+      });
+
+      const service = new AuthService(
+        prisma,
+        defaultTokenService(),
+        defaultGoogleAuthService(),
+      );
+      await service.onModuleInit();
+
+      try {
+        await service.registerDeviceAfterRecovery(authHeader, dto);
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(AuthException);
+        expect((error as AuthException).code).toBe('USER_INACTIVE');
+      }
+    });
+
+    it('throws INVALID_PUBLIC_KEY when public key is invalid', async () => {
+      const prisma = buildPrismaService({
+        userFindUnique: jest.fn().mockResolvedValue(mockUser),
+      });
+
+      const service = new AuthService(
+        prisma,
+        defaultTokenService(),
+        defaultGoogleAuthService(),
+      );
+      await service.onModuleInit();
+
+      try {
+        await service.registerDeviceAfterRecovery(authHeader, {
+          ...dto,
+          publicKey: '!!!invalid!!!',
+        });
+        fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(AuthException);
+        expect((error as AuthException).code).toBe('INVALID_PUBLIC_KEY');
+      }
     });
   });
 });

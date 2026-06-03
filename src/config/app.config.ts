@@ -1,4 +1,5 @@
 import { AuthConfig } from './auth.config';
+import { GoogleAuthConfig } from './google.config';
 
 export type NodeEnvironment = 'development' | 'test' | 'staging' | 'production';
 
@@ -22,4 +23,5 @@ export interface AppConfig {
     apiKey: string;
     baseUrl: string;
   };
+  google: GoogleAuthConfig;
 }

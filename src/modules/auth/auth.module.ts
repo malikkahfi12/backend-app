@@ -8,6 +8,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { TokenService } from './services/token.service';
+import { GoogleAuthService } from './services/google-auth.service';
 
 @Module({
   imports: [
@@ -25,7 +26,7 @@ import { TokenService } from './services/token.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, AuthConfigService, TokenService, JwtAuthGuard],
-  exports: [JwtModule, AuthConfigService, TokenService, JwtAuthGuard],
+  providers: [AuthService, AuthConfigService, TokenService, JwtAuthGuard, GoogleAuthService],
+  exports: [JwtModule, AuthConfigService, TokenService, JwtAuthGuard, GoogleAuthService],
 })
 export class AuthModule {}

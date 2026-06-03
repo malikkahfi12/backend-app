@@ -20,6 +20,11 @@ export interface GenerateRefreshTokenResult {
   recordId: string;
 }
 
+export interface RecoveryTokenPayload {
+  sub: string;
+  purpose: string;
+}
+
 @Injectable()
 export class TokenService {
   constructor(
@@ -37,6 +42,22 @@ export class TokenService {
       deviceId,
       username,
     });
+  }
+
+  async signRecoveryToken(
+    userId: string,
+    purpose: string,
+  ): Promise<string> {
+    return this.jwtService.signAsync(
+      { sub: userId, purpose },
+      { expiresIn: '10m' },
+    );
+  }
+
+  async verifyRecoveryToken(
+    token: string,
+  ): Promise<RecoveryTokenPayload> {
+    return this.jwtService.verifyAsync<RecoveryTokenPayload>(token);
   }
 
   async generateRefreshToken(

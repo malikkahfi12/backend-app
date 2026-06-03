@@ -1,4 +1,4 @@
-import { HttpStatus, Injectable, OnModuleInit } from '@nestjs/common';
+import { HttpStatus, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import _sodium from 'libsodium-wrappers';
 import { Prisma } from '@prisma/client';
 import { randomBytes } from 'crypto';
@@ -11,6 +11,7 @@ import { LoginResponseDto } from './dto/login-response.dto';
 import { RegisterDeviceDto } from './dto/register-device.dto';
 import { RegisterDeviceResponseDto } from './dto/register-device-response.dto';
 import { AuthException } from './exceptions/auth.exception';
+import { GoogleAuthService } from './services/google-auth.service';
 import { TokenService } from './services/token.service';
 import { CurrentUserPayload } from './types/current-user.type';
 
@@ -36,10 +37,12 @@ const RESERVED_USERNAMES = new Set([
 @Injectable()
 export class AuthService implements OnModuleInit {
   private sodium!: typeof _sodium;
+  private readonly logger = new Logger(AuthService.name);
 
   constructor(
     private readonly prismaService: PrismaService,
     private readonly tokenService: TokenService,
+    private readonly googleAuthService: GoogleAuthService,
   ) {}
 
   async onModuleInit() {
@@ -476,6 +479,278 @@ export class AuthService implements OnModuleInit {
     });
 
     return { message: 'Device revoked successfully' };
+  }
+
+  async connectGoogleAccount(
+    userId: string,
+    idToken: string,
+  ): Promise<{
+    data: { provider: string; providerUserId: string; email: string | null };
+  }> {
+    const googleIdentity = await this.googleAuthService.verifyIdToken(idToken);
+
+    if (!googleIdentity.emailVerified) {
+      throw new AuthException(
+        'GOOGLE_EMAIL_NOT_VERIFIED',
+        'Google account email is not verified',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    const existingIdentity =
+      await this.prismaService.authIdentity.findUnique({
+        where: {
+          provider_providerUserId: {
+            provider: 'google',
+            providerUserId: googleIdentity.sub,
+          },
+        },
+      });
+
+    if (existingIdentity) {
+      if (existingIdentity.userId === userId) {
+        return {
+          data: {
+            provider: existingIdentity.provider,
+            providerUserId: existingIdentity.providerUserId,
+            email: existingIdentity.email,
+          },
+        };
+      }
+
+      throw new AuthException(
+        'GOOGLE_ACCOUNT_ALREADY_LINKED',
+        'This Google account is already linked to another user',
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    try {
+      const identity = await this.prismaService.authIdentity.create({
+        data: {
+          userId,
+          provider: 'google',
+          providerUserId: googleIdentity.sub,
+          email: googleIdentity.email,
+        },
+      });
+
+      return {
+        data: {
+          provider: identity.provider,
+          providerUserId: identity.providerUserId,
+          email: identity.email,
+        },
+      };
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        const identity =
+          await this.prismaService.authIdentity.findUniqueOrThrow({
+            where: {
+              provider_providerUserId: {
+                provider: 'google',
+                providerUserId: googleIdentity.sub,
+              },
+            },
+          });
+
+        if (identity.userId === userId) {
+          return {
+            data: {
+              provider: identity.provider,
+              providerUserId: identity.providerUserId,
+              email: identity.email,
+            },
+          };
+        }
+
+        throw new AuthException(
+          'GOOGLE_ACCOUNT_ALREADY_LINKED',
+          'This Google account is already linked to another user',
+          HttpStatus.CONFLICT,
+        );
+      }
+
+      throw error;
+    }
+  }
+
+  async recoverWithGoogle(
+    idToken: string,
+  ): Promise<{ data: { recoveryToken: string } }> {
+    const googleIdentity = await this.googleAuthService.verifyIdToken(idToken);
+
+    this.logger.log(`Recovery requested for Google sub=${googleIdentity.sub}`);
+
+    if (!googleIdentity.emailVerified) {
+      this.logger.warn(
+        `Recovery failed for Google sub=${googleIdentity.sub}: email not verified`,
+      );
+      throw new AuthException(
+        'GOOGLE_EMAIL_NOT_VERIFIED',
+        'Google account email is not verified',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    const identity = await this.prismaService.authIdentity.findUnique({
+      where: {
+        provider_providerUserId: {
+          provider: 'google',
+          providerUserId: googleIdentity.sub,
+        },
+      },
+      include: { user: true },
+    });
+
+    if (!identity) {
+      this.logger.warn(
+        `Recovery failed for Google sub=${googleIdentity.sub}: no linked account`,
+      );
+      throw new AuthException(
+        'GOOGLE_ACCOUNT_NOT_LINKED',
+        'No account linked to this Google identity',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    if (!identity.user.isActive) {
+      this.logger.warn(
+        `Recovery failed for Google sub=${googleIdentity.sub}: user ${identity.userId} is inactive`,
+      );
+      throw new AuthException(
+        'USER_INACTIVE',
+        'User account is inactive',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    const recoveryToken = await this.tokenService.signRecoveryToken(
+      identity.userId,
+      'account_recovery',
+    );
+
+    this.logger.log(`Recovery token issued for user=${identity.userId}`);
+
+    return { data: { recoveryToken } };
+  }
+
+  async registerDeviceAfterRecovery(
+    authHeader: string,
+    dto: { publicKey: string; deviceName?: string | null; platform?: string | null },
+  ): Promise<{
+    data: {
+      deviceId: string;
+      challengeId: string;
+      challenge: string;
+      expiresAt: string;
+    };
+  }> {
+    if (!authHeader?.startsWith('Bearer ')) {
+      this.logger.warn('Recovery device registration failed: missing recovery token header');
+      throw new AuthException(
+        'INVALID_RECOVERY_TOKEN',
+        'Recovery token is required',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    const recoveryToken = authHeader.slice(7).trim();
+
+    let payload;
+    try {
+      payload = await this.tokenService.verifyRecoveryToken(recoveryToken);
+    } catch (error) {
+      this.logger.warn(
+        `Recovery device registration failed: invalid or expired token (${error instanceof Error ? error.message : 'unknown'})`,
+      );
+      throw new AuthException(
+        'INVALID_RECOVERY_TOKEN',
+        'Invalid or expired recovery token',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    if (payload.purpose !== 'account_recovery') {
+      this.logger.warn(
+        `Recovery device registration failed: invalid purpose='${payload.purpose}'`,
+      );
+      throw new AuthException(
+        'INVALID_RECOVERY_TOKEN',
+        'Invalid recovery token purpose',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    const user = await this.prismaService.user.findUnique({
+      where: { id: payload.sub },
+    });
+
+    if (!user || !user.isActive) {
+      this.logger.warn(
+        `Recovery device registration failed: user ${payload.sub} not found or inactive`,
+      );
+      throw new AuthException(
+        'USER_INACTIVE',
+        'User account is inactive',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    const { publicKey } = dto;
+    const deviceName = dto.deviceName ?? null;
+    const platform = dto.platform ?? null;
+
+    if (!this.isValidPublicKey(publicKey)) {
+      this.logger.warn(
+        `Recovery device registration failed: invalid public key for user ${user.id}`,
+      );
+      throw new AuthException(
+        'INVALID_PUBLIC_KEY',
+        'Invalid public key',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const device = await this.prismaService.userDevice.create({
+      data: {
+        userId: user.id,
+        publicKey,
+        deviceName,
+        platform,
+        lastSeenAt: new Date(),
+      },
+    });
+
+    const challenge = randomBytes(CHALLENGE_BYTES).toString('base64url');
+    const expiresAt = new Date(
+      Date.now() + CHALLENGE_TTL_MINUTES * 60 * 1000,
+    );
+
+    const challengeRecord = await this.prismaService.authChallenge.create({
+      data: {
+        userId: user.id,
+        deviceId: device.id,
+        challenge,
+        expiresAt,
+      },
+    });
+
+    this.logger.log(
+      `Recovery device ${device.id} registered for user=${user.id}`,
+    );
+
+    return {
+      data: {
+        deviceId: device.id,
+        challengeId: challengeRecord.id,
+        challenge,
+        expiresAt: expiresAt.toISOString(),
+      },
+    };
   }
 
   async cleanupExpiredRecords(): Promise<{

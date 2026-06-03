@@ -115,4 +115,84 @@ describe('TokenService', () => {
       expect(id).toBeNull();
     });
   });
+
+  describe('signRecoveryToken', () => {
+    it('signs a JWT with recovery payload and 10m expiry', async () => {
+      const signAsyncSpy = jest.fn().mockResolvedValue('recovery-jwt');
+
+      const service = new TokenService(
+        { signAsync: signAsyncSpy } as unknown as JwtService,
+        {
+          getAccessTokenSecret: jest.fn(),
+          getAccessTokenExpiry: jest.fn(),
+          getRefreshTokenSecret: jest.fn(),
+          getRefreshTokenExpiry: jest.fn(),
+        } as unknown as AuthConfigService,
+      );
+
+      const token = await service.signRecoveryToken(
+        'user-1',
+        'account_recovery',
+      );
+
+      expect(token).toBe('recovery-jwt');
+      expect(signAsyncSpy).toHaveBeenCalledWith(
+        { sub: 'user-1', purpose: 'account_recovery' },
+        { expiresIn: '10m' },
+      );
+    });
+  });
+
+  describe('verifyRecoveryToken', () => {
+    it('verifies and returns the recovery token payload', async () => {
+      const verifyAsyncSpy = jest.fn().mockResolvedValue({
+        sub: 'user-1',
+        purpose: 'account_recovery',
+      });
+
+      const service = new TokenService(
+        {
+          signAsync: jest.fn(),
+          verifyAsync: verifyAsyncSpy,
+        } as unknown as JwtService,
+        {
+          getAccessTokenSecret: jest.fn(),
+          getAccessTokenExpiry: jest.fn(),
+          getRefreshTokenSecret: jest.fn(),
+          getRefreshTokenExpiry: jest.fn(),
+        } as unknown as AuthConfigService,
+      );
+
+      const payload = await service.verifyRecoveryToken('valid-token');
+
+      expect(payload).toEqual({
+        sub: 'user-1',
+        purpose: 'account_recovery',
+      });
+      expect(verifyAsyncSpy).toHaveBeenCalledWith('valid-token');
+    });
+
+    it('throws when token is invalid or expired', async () => {
+      const verifyAsyncSpy = jest
+        .fn()
+        .mockRejectedValue(new Error('jwt expired'));
+
+      const service = new TokenService(
+        {
+          signAsync: jest.fn(),
+          verifyAsync: verifyAsyncSpy,
+        } as unknown as JwtService,
+        {
+          getAccessTokenSecret: jest.fn(),
+          getAccessTokenExpiry: jest.fn(),
+          getRefreshTokenSecret: jest.fn(),
+          getRefreshTokenExpiry: jest.fn(),
+        } as unknown as AuthConfigService,
+      );
+
+      await expect(
+        service.verifyRecoveryToken('expired-token'),
+      ).rejects.toThrow('jwt expired');
+    });
+  });
 });
