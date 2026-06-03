@@ -422,6 +422,7 @@ model User {
   devices        UserDevice[]
   refreshTokens  RefreshToken[]
   authChallenges AuthChallenge[]
+  authIdentities AuthIdentity[]
 
   @@map("auth_users")
 }
@@ -480,4 +481,20 @@ model AuthChallenge {
   @@index([deviceId])
   @@index([expiresAt])
   @@map("auth_challenges")
+}
+
+model AuthIdentity {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  provider       String
+  providerUserId String   @map("provider_user_id")
+  email          String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
+  @@map("auth_identities")
 }

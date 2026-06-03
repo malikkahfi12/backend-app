@@ -86,6 +86,10 @@ class EnvironmentVariables {
   @IsString()
   @IsNotEmpty()
   STADIAMAPS_BASE_URL!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  GOOGLE_CLIENT_ID!: string;
 }
 
 export function validateEnv(

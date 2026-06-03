@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   HttpCode,
   HttpStatus,
   Param,
@@ -11,6 +12,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
@@ -26,6 +28,12 @@ import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { ChallengeRequestDto } from './dto/challenge-request.dto';
 import { ChallengeResponseDto } from './dto/challenge-response.dto';
+import { ConnectGoogleRequestDto } from './dto/connect-google-request.dto';
+import { ConnectGoogleResponseDto } from './dto/connect-google-response.dto';
+import { RecoveryGoogleRequestDto } from './dto/recovery-google-request.dto';
+import { RecoveryGoogleResponseDto } from './dto/recovery-google-response.dto';
+import { RecoveryRegisterDeviceRequestDto } from './dto/recovery-register-device-request.dto';
+import { RecoveryRegisterDeviceResponseDto } from './dto/recovery-register-device-response.dto';
 import {
   DeviceListResponseDto,
   DeviceRevokeResponseDto,
@@ -249,5 +257,139 @@ export class AuthController {
         user.deviceId,
       ),
     };
+  }
+
+  @Post('identities/google/connect')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOkResponse({
+    description: 'Google account linked successfully.',
+    type: ConnectGoogleResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid access token.',
+    schema: { example: UNAUTHORIZED_EXAMPLE },
+  })
+  @ApiForbiddenResponse({
+    description: 'Google account email is not verified.',
+    schema: {
+      example: {
+        success: false,
+        error: {
+          code: 'GOOGLE_EMAIL_NOT_VERIFIED',
+          message: 'Google account email is not verified',
+        },
+      },
+    },
+  })
+  @ApiConflictResponse({
+    description: 'Google account already linked to another user.',
+    schema: {
+      example: {
+        success: false,
+        error: {
+          code: 'GOOGLE_ACCOUNT_ALREADY_LINKED',
+          message: 'This Google account is already linked to another user',
+        },
+      },
+    },
+  })
+  async connectGoogle(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: ConnectGoogleRequestDto,
+  ): Promise<ConnectGoogleResponseDto> {
+    return this.authService.connectGoogleAccount(user.id, dto.idToken);
+  }
+
+  @Post('recovery/google')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({
+    description: 'Recovery token issued successfully.',
+    type: RecoveryGoogleResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Invalid Google token or user account inactive.',
+    schema: {
+      example: {
+        success: false,
+        error: {
+          code: 'INVALID_GOOGLE_TOKEN',
+          message: 'Failed to verify Google ID token',
+        },
+      },
+    },
+  })
+  @ApiForbiddenResponse({
+    description: 'Google account email is not verified.',
+    schema: {
+      example: {
+        success: false,
+        error: {
+          code: 'GOOGLE_EMAIL_NOT_VERIFIED',
+          message: 'Google account email is not verified',
+        },
+      },
+    },
+  })
+  @ApiNotFoundResponse({
+    description: 'No account linked to this Google identity.',
+    schema: {
+      example: {
+        success: false,
+        error: {
+          code: 'GOOGLE_ACCOUNT_NOT_LINKED',
+          message: 'No account linked to this Google identity',
+        },
+      },
+    },
+  })
+  async recoverWithGoogle(
+    @Body() dto: RecoveryGoogleRequestDto,
+  ): Promise<RecoveryGoogleResponseDto> {
+    return this.authService.recoverWithGoogle(dto.idToken);
+  }
+
+  @Post('recovery/register-device')
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({
+    description: 'New device registered and challenge issued.',
+    type: RecoveryRegisterDeviceResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid public key.',
+    schema: {
+      example: {
+        success: false,
+        error: {
+          code: 'INVALID_PUBLIC_KEY',
+          message: 'Invalid public key',
+        },
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Invalid or expired recovery token, or user inactive.',
+    schema: {
+      example: {
+        success: false,
+        error: {
+          code: 'INVALID_RECOVERY_TOKEN',
+          message: 'Invalid or expired recovery token',
+        },
+      },
+    },
+  })
+  async registerDeviceAfterRecovery(
+    @Headers('authorization') authHeader: string,
+    @Body() dto: RecoveryRegisterDeviceRequestDto,
+  ): Promise<RecoveryRegisterDeviceResponseDto> {
+    return this.authService.registerDeviceAfterRecovery(authHeader, {
+      publicKey: dto.publicKey,
+      deviceName: dto.deviceName ?? null,
+      platform: dto.platform ?? null,
+    });
   }
 }

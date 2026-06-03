@@ -9,6 +9,7 @@ interface AccessTokenPayload {
   sub: string;
   deviceId: string;
   username: string;
+  purpose?: undefined;
 }
 
 @Injectable()
@@ -36,6 +37,14 @@ export class JwtAuthGuard implements CanActivate {
     try {
       payload = await this.jwtService.verifyAsync<AccessTokenPayload>(token);
     } catch {
+      throw new AuthException(
+        'INVALID_ACCESS_TOKEN',
+        'Invalid or expired access token',
+        401,
+      );
+    }
+
+    if (payload.purpose) {
       throw new AuthException(
         'INVALID_ACCESS_TOKEN',
         'Invalid or expired access token',
