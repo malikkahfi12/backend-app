@@ -5,19 +5,12 @@ import { AppConfig } from '../../../config/app.config';
 
 @Injectable()
 export class DevTokenService {
-  private readonly apiKey: string;
   private readonly internalServiceToken: string;
 
   constructor(private readonly configService: ConfigService<AppConfig, true>) {
-    this.apiKey = this.configService.get('apiKey', { infer: true });
     this.internalServiceToken = this.configService.get('internalServiceToken', {
       infer: true,
     });
-  }
-
-  validateApiKey(value: string): boolean {
-    if (!value || !this.apiKey) return false;
-    return this.timingSafeCompare(value, this.apiKey);
   }
 
   validateInternalToken(value: string): boolean {

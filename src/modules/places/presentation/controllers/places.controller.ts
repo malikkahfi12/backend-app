@@ -1,5 +1,5 @@
 import { Controller, Get, NotFoundException, Query } from '@nestjs/common';
-import { ApiOkResponse, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiOkResponse, ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { SearchPlacesQueryDto } from '../dto/search-places-query.dto';
 import { ReversePlacesQueryDto } from '../dto/reverse-places-query.dto';
 import {
@@ -9,7 +9,7 @@ import {
 import { PlacesService } from '../../services/places.service';
 
 @ApiTags('Places')
-@ApiSecurity('x-api-key')
+@ApiBearerAuth()
 @Controller('places')
 export class PlacesController {
   constructor(private readonly placesService: PlacesService) {}

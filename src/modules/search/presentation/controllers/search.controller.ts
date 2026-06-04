@@ -2,7 +2,7 @@ import { Controller, Get, Query } from '@nestjs/common';
 import {
   ApiExtraModels,
   ApiOkResponse,
-  ApiSecurity,
+  ApiBearerAuth,
   ApiTags,
 } from '@nestjs/swagger';
 import { UnifiedSearchQueryDto } from '../dto/unified-search-query.dto';
@@ -33,7 +33,7 @@ class SearchResultDto {
 }
 
 @ApiTags('Search')
-@ApiSecurity('x-api-key')
+@ApiBearerAuth()
 @Controller('search')
 @ApiExtraModels(SearchResultDto)
 export class SearchController {

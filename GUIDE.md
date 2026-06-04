@@ -28,20 +28,86 @@ Every response follows one of two shapes:
 }
 ```
 
-All endpoints require an API key header:
-```
-X-API-Key: <your-api-key>
-```
+## Authentication Requirements
 
-Endpoints marked **Bearer** also require a JWT access token:
+All data endpoints require a JWT access token obtained via the
+authentication flow below. Auth endpoints and `/health` are publicly
+accessible without any authentication headers.
+
+### Public Endpoints (no auth)
+All `/auth/*` endpoints and `GET /health`. These bootstrap
+authentication so must be reachable without a token.
+
+### Protected Endpoints (JWT required)
+Every other endpoint. Include the access token returned from
+register, login, or refresh:
 ```
 Authorization: Bearer <access-token>
 ```
 
-Endpoints marked **Recovery Bearer** require a short-lived recovery token:
+The JWT must NOT contain a `purpose` field — recovery tokens are
+rejected on protected endpoints.
+
+### Internal Endpoints (Internal Service Token)
+Internal service-to-service endpoints use a separate opaque token:
 ```
-Authorization: Bearer <recovery-token>
+Authorization: Bearer <internal-service-token>
 ```
+
+### Header Quick Reference
+
+| Scenario | Header |
+|---|---|
+| Protected endpoints | `Authorization: Bearer <access-token>` |
+| Recovery device registration | `Authorization: Bearer <recovery-token>` |
+| Internal import endpoints | `Authorization: Bearer <internal-service-token>` |
+
+### Endpoint Auth Reference
+
+#### Public (no auth)
+
+| Method | Endpoint |
+|---|---|
+| `GET` | `/health` |
+| `POST` | `/auth/register` |
+| `POST` | `/auth/challenge` |
+| `POST` | `/auth/login` |
+| `POST` | `/auth/refresh` |
+| `POST` | `/auth/logout` |
+| `POST` | `/auth/recovery/google` |
+| `POST` | `/auth/recovery/register-device` |
+
+#### JWT Bearer required
+
+| Method | Endpoint | Domain |
+|---|---|---|
+| `GET` `POST` | `/stops`, `/stops/nearby`, `/stops/:id`, `/stops/:id/with-departures`, `/stops/:stopId/routes` | Stops |
+| `GET` `POST` | `/routes`, `/routes/:id`, `/routes/:id/stops`, `/routes/:id/shape` | Routes |
+| `GET` `POST` | `/trips`, `/trips/:id`, `/trips/:tripId/stops`, `/trips/:tripId/shape` | Trips |
+| `GET` `POST` | `/agencies`, `/agencies/:id` | Agencies |
+| `GET` `POST` | `/calendars`, `/calendars/:id` | Calendars |
+| `GET` `POST` | `/stop-times`, `/stop-times/:id` | Stop Times |
+| `GET` | `/schedules` | Schedules |
+| `GET` `POST` | `/departures`, `/departures/batch` | Departures |
+| `GET` | `/routing`, `/routing/graph/summary`, `/routing/graph/stops/:stopId/connections` | Routing |
+| `POST` | `/routing/graph/rebuild` | Routing |
+| `GET` | `/places/search`, `/places/reverse` | Places |
+| `GET` | `/search` | Search |
+| `POST` | `/gtfs/import` | GTFS |
+| `GET` `POST` | `/countries` | Countries |
+| `GET` `POST` | `/regions` | Regions |
+| `GET` `POST` | `/operators` | Operators |
+| `GET` `POST` | `/transit-modes` | Transit Modes |
+| `GET` `POST` | `/feed-sources` | Feed Sources |
+| `GET` | `/auth/me` | Auth |
+| `GET` `DELETE` | `/auth/devices`, `/auth/devices/:id` | Auth |
+| `POST` | `/auth/identities/google/connect` | Auth |
+
+#### Internal Service Token required
+
+| Method | Endpoint | Domain |
+|---|---|---|
+| `POST` | `/internal/transit/import/jakarta/:feedSourceId` | Transit Import |
 
 ---
 
@@ -322,7 +388,6 @@ Get the authenticated user's profile. Requires a valid access token.
 
 ```
 GET /auth/me
-Auth: Bearer
 Rate limit: none
 HTTP 200
 ```
@@ -354,7 +419,6 @@ HTTP 200
 
 ```
 GET /auth/devices
-Auth: Bearer
 Rate limit: none
 HTTP 200
 ```
@@ -386,7 +450,6 @@ Revoking a device invalidates all its active refresh tokens and prevents future 
 
 ```
 DELETE /auth/devices/:id
-Auth: Bearer
 Rate limit: none
 HTTP 200
 ```
@@ -413,7 +476,6 @@ Requires the Google Identity Services SDK on the client to obtain an ID token.
 
 ```
 POST /auth/identities/google/connect
-Auth: Bearer
 Rate limit: none
 HTTP 200
 ```
@@ -484,7 +546,6 @@ Use the recovery token to attach a new device to the existing account. This gene
 
 ```
 POST /auth/recovery/register-device
-Auth: Recovery Bearer
 Rate limit: 3 requests per minute
 HTTP 200
 ```

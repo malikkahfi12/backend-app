@@ -48,9 +48,7 @@ export class RouteService {
     return this.routeRepository.findById(id);
   }
 
-  async getRouteShape(
-    routeId: string,
-  ): Promise<string | null> {
+  async getRouteShape(routeId: string): Promise<string | null> {
     const db = this.prismaService as any;
 
     const trips = await db.trip.findMany({

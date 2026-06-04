@@ -10,7 +10,7 @@ import {
 import {
   ApiCreatedResponse,
   ApiOkResponse,
-  ApiSecurity,
+  ApiBearerAuth,
   ApiTags,
 } from '@nestjs/swagger';
 import { StopTimeService } from '../../application/services/stop-time.service';
@@ -20,7 +20,7 @@ import { StopTimeResponseDto } from '../dto/stop-time-response.dto';
 import { toStopTimeResponse } from '../mappers/stop-time.mapper';
 
 @ApiTags('Stop Times')
-@ApiSecurity('x-api-key')
+@ApiBearerAuth()
 @Controller('stop-times')
 export class StopTimesController {
   constructor(private readonly stopTimeService: StopTimeService) {}

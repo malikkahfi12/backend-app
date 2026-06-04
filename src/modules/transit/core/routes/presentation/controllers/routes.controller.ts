@@ -10,7 +10,7 @@ import {
 import {
   ApiCreatedResponse,
   ApiOkResponse,
-  ApiSecurity,
+  ApiBearerAuth,
   ApiTags,
 } from '@nestjs/swagger';
 import { RouteService } from '../../application/services/route.service';
@@ -20,7 +20,7 @@ import { RouteResponseDto } from '../dto/route-response.dto';
 import { toRouteResponse } from '../mappers/route.mapper';
 
 @ApiTags('Routes')
-@ApiSecurity('x-api-key')
+@ApiBearerAuth()
 @Controller('routes')
 export class RoutesController {
   constructor(private readonly routeService: RouteService) {}
@@ -62,9 +62,7 @@ export class RoutesController {
   @ApiOkResponse({
     description: 'Route shape returned as polyline6-encoded string.',
   })
-  async getRouteShape(
-    @Param('id') id: string,
-  ): Promise<string | null> {
+  async getRouteShape(@Param('id') id: string): Promise<string | null> {
     const shape = await this.routeService.getRouteShape(id);
     if (!shape) throw new NotFoundException(`Route not found or has no shape`);
     return shape;

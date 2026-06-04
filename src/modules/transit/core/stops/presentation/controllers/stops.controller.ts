@@ -10,7 +10,7 @@ import {
 import {
   ApiCreatedResponse,
   ApiOkResponse,
-  ApiSecurity,
+  ApiBearerAuth,
   ApiTags,
 } from '@nestjs/swagger';
 import { StopService } from '../../application/services/stop.service';
@@ -39,7 +39,7 @@ function toNearbyStopResponse(row: NearbyStopResult): NearbyStopResponseDto {
 }
 
 @ApiTags('Stops')
-@ApiSecurity('x-api-key')
+@ApiBearerAuth()
 @Controller('stops')
 export class StopsController {
   constructor(

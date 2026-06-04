@@ -4,8 +4,7 @@ import { IsNotEmpty, IsString } from 'class-validator';
 export class ConnectGoogleRequestDto {
   @ApiProperty({
     description: 'Google ID token from the client SDK',
-    example:
-      'eyJhbGciOiJSUzI1NiIsImtpZCI6IjFmZGE2N2I5ZjQxMjI3M2Q1N2ZmOGU3...',
+    example: 'eyJhbGciOiJSUzI1NiIsImtpZCI6IjFmZGE2N2I5ZjQxMjI3M2Q1N2ZmOGU3...',
   })
   @IsString()
   @IsNotEmpty()

@@ -18,7 +18,10 @@ import {
   WALK_GEOMETRY_STADIAMAPS_MIN_DISTANCE_METERS,
   STADIAMAPS_DIRECTIONS_TIMEOUT_MS,
 } from '../constants/routing.constants';
-import { encodePolyline6, decodePolyline6 } from '../../../common/utils/polyline6';
+import {
+  encodePolyline6,
+  decodePolyline6,
+} from '../../../common/utils/polyline6';
 
 interface StopCandidate {
   stopId: string;

@@ -2,7 +2,7 @@ import { Body, Controller, Get, Post } from '@nestjs/common';
 import {
   ApiCreatedResponse,
   ApiOkResponse,
-  ApiSecurity,
+  ApiBearerAuth,
   ApiTags,
 } from '@nestjs/swagger';
 import { CountryService } from '../../application/services/country.service';
@@ -12,7 +12,7 @@ import { CountryResponseDto } from '../dto/country-response.dto';
 import { toCountryResponse } from '../mappers/country.mapper';
 
 @ApiTags('Countries')
-@ApiSecurity('x-api-key')
+@ApiBearerAuth()
 @Controller('countries')
 export class CountriesController {
   constructor(

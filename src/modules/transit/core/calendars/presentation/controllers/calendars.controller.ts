@@ -10,7 +10,7 @@ import {
 import {
   ApiCreatedResponse,
   ApiOkResponse,
-  ApiSecurity,
+  ApiBearerAuth,
   ApiTags,
 } from '@nestjs/swagger';
 import { CalendarService } from '../../application/services/calendar.service';
@@ -20,7 +20,7 @@ import { CalendarResponseDto } from '../dto/calendar-response.dto';
 import { toCalendarResponse } from '../mappers/calendar.mapper';
 
 @ApiTags('Calendars')
-@ApiSecurity('x-api-key')
+@ApiBearerAuth()
 @Controller('calendars')
 export class CalendarsController {
   constructor(private readonly calendarService: CalendarService) {}

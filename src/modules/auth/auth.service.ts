@@ -497,15 +497,14 @@ export class AuthService implements OnModuleInit {
       );
     }
 
-    const existingIdentity =
-      await this.prismaService.authIdentity.findUnique({
-        where: {
-          provider_providerUserId: {
-            provider: 'google',
-            providerUserId: googleIdentity.sub,
-          },
+    const existingIdentity = await this.prismaService.authIdentity.findUnique({
+      where: {
+        provider_providerUserId: {
+          provider: 'google',
+          providerUserId: googleIdentity.sub,
         },
-      });
+      },
+    });
 
     if (existingIdentity) {
       if (existingIdentity.userId === userId) {
@@ -640,7 +639,11 @@ export class AuthService implements OnModuleInit {
 
   async registerDeviceAfterRecovery(
     authHeader: string,
-    dto: { publicKey: string; deviceName?: string | null; platform?: string | null },
+    dto: {
+      publicKey: string;
+      deviceName?: string | null;
+      platform?: string | null;
+    },
   ): Promise<{
     data: {
       deviceId: string;
@@ -650,7 +653,9 @@ export class AuthService implements OnModuleInit {
     };
   }> {
     if (!authHeader?.startsWith('Bearer ')) {
-      this.logger.warn('Recovery device registration failed: missing recovery token header');
+      this.logger.warn(
+        'Recovery device registration failed: missing recovery token header',
+      );
       throw new AuthException(
         'INVALID_RECOVERY_TOKEN',
         'Recovery token is required',
@@ -726,9 +731,7 @@ export class AuthService implements OnModuleInit {
     });
 
     const challenge = randomBytes(CHALLENGE_BYTES).toString('base64url');
-    const expiresAt = new Date(
-      Date.now() + CHALLENGE_TTL_MINUTES * 60 * 1000,
-    );
+    const expiresAt = new Date(Date.now() + CHALLENGE_TTL_MINUTES * 60 * 1000);
 
     const challengeRecord = await this.prismaService.authChallenge.create({
       data: {

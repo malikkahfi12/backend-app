@@ -44,19 +44,14 @@ export class TokenService {
     });
   }
 
-  async signRecoveryToken(
-    userId: string,
-    purpose: string,
-  ): Promise<string> {
+  async signRecoveryToken(userId: string, purpose: string): Promise<string> {
     return this.jwtService.signAsync(
       { sub: userId, purpose },
       { expiresIn: '10m' },
     );
   }
 
-  async verifyRecoveryToken(
-    token: string,
-  ): Promise<RecoveryTokenPayload> {
+  async verifyRecoveryToken(token: string): Promise<RecoveryTokenPayload> {
     return this.jwtService.verifyAsync<RecoveryTokenPayload>(token);
   }
 

@@ -2,7 +2,7 @@ import { Body, Controller, Get, Post } from '@nestjs/common';
 import {
   ApiCreatedResponse,
   ApiOkResponse,
-  ApiSecurity,
+  ApiBearerAuth,
   ApiTags,
 } from '@nestjs/swagger';
 import { FeedSourceService } from '../../application/services/feed-source.service';
@@ -12,7 +12,7 @@ import { FeedSourceResponseDto } from '../dto/feed-source-response.dto';
 import { toFeedSourceResponse } from '../mappers/feed-source.mapper';
 
 @ApiTags('Feed Sources')
-@ApiSecurity('x-api-key')
+@ApiBearerAuth()
 @Controller('feed-sources')
 export class FeedSourcesController {
   constructor(

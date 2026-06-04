@@ -1,12 +1,17 @@
 import { Body, Controller, Param, Post } from '@nestjs/common';
-import { ApiCreatedResponse, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import {
+  ApiCreatedResponse,
+  ApiSecurity,
+  ApiBearerAuth,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Internal } from '../../security/decorators/internal.decorator';
 import { TransitImportService } from '../services/transit-import.service';
 import { ImportRequestDto } from '../dto/import-request.dto';
 import { ImportResponseDto } from '../dto/import-response.dto';
 
 @ApiTags('Transit Import')
-@ApiSecurity('x-api-key')
+@ApiBearerAuth()
 @ApiSecurity('internal-service-token')
 @Internal()
 @Controller('internal/transit/import')

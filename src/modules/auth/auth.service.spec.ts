@@ -323,7 +323,11 @@ describe('AuthService', () => {
       const prisma = buildPrismaService({
         challengeFindUnique: jest.fn().mockResolvedValue(mockChallengeRecord),
       });
-      const service = new AuthService(prisma, defaultTokenService(), defaultGoogleAuthService());
+      const service = new AuthService(
+        prisma,
+        defaultTokenService(),
+        defaultGoogleAuthService(),
+      );
       await service.onModuleInit();
       const result = await service.completeChallenge(loginDto);
 
@@ -379,7 +383,11 @@ describe('AuthService', () => {
         count: 0,
       });
 
-      const service = new AuthService(prisma, defaultTokenService(), defaultGoogleAuthService());
+      const service = new AuthService(
+        prisma,
+        defaultTokenService(),
+        defaultGoogleAuthService(),
+      );
       await service.onModuleInit();
 
       try {
@@ -451,7 +459,11 @@ describe('AuthService', () => {
       } as unknown as PrismaService;
 
       const tokenSvc = defaultTokenService();
-      const service = new AuthService(prisma, tokenSvc, defaultGoogleAuthService());
+      const service = new AuthService(
+        prisma,
+        tokenSvc,
+        defaultGoogleAuthService(),
+      );
       await service.onModuleInit();
       const result = await service.refreshToken(REFRESH_TOKEN);
 
@@ -483,7 +495,11 @@ describe('AuthService', () => {
         } as unknown,
       } as unknown as PrismaService;
 
-      const service = new AuthService(prisma, defaultTokenService(), defaultGoogleAuthService());
+      const service = new AuthService(
+        prisma,
+        defaultTokenService(),
+        defaultGoogleAuthService(),
+      );
       await service.onModuleInit();
       const result = await service.logout(REFRESH_TOKEN);
 
@@ -502,7 +518,11 @@ describe('AuthService', () => {
         } as unknown,
       } as unknown as PrismaService;
 
-      const service = new AuthService(prisma, defaultTokenService(), defaultGoogleAuthService());
+      const service = new AuthService(
+        prisma,
+        defaultTokenService(),
+        defaultGoogleAuthService(),
+      );
       await service.onModuleInit();
       const result = await service.logout(REFRESH_TOKEN);
 
@@ -554,7 +574,11 @@ describe('AuthService', () => {
         secondDevice,
       ]);
 
-      const service = new AuthService(prisma, defaultTokenService(), defaultGoogleAuthService());
+      const service = new AuthService(
+        prisma,
+        defaultTokenService(),
+        defaultGoogleAuthService(),
+      );
       await service.onModuleInit();
       const result = await service.listDevices('user-uuid', 'device-uuid');
 
@@ -571,7 +595,11 @@ describe('AuthService', () => {
         secondDevice,
       ]);
 
-      const service = new AuthService(prisma, defaultTokenService(), defaultGoogleAuthService());
+      const service = new AuthService(
+        prisma,
+        defaultTokenService(),
+        defaultGoogleAuthService(),
+      );
       await service.onModuleInit();
       const result = await service.listDevices('user-uuid', 'other-device');
 
@@ -583,7 +611,11 @@ describe('AuthService', () => {
       const prisma = buildPrismaService();
       (prisma.userDevice.findMany as jest.Mock).mockResolvedValue([]);
 
-      const service = new AuthService(prisma, defaultTokenService(), defaultGoogleAuthService());
+      const service = new AuthService(
+        prisma,
+        defaultTokenService(),
+        defaultGoogleAuthService(),
+      );
       await service.onModuleInit();
       const result = await service.listDevices('user-uuid', 'device-uuid');
 
@@ -594,7 +626,11 @@ describe('AuthService', () => {
   describe('revokeDevice', () => {
     it('revokes device refresh tokens successfully', async () => {
       const prisma = buildPrismaService();
-      const service = new AuthService(prisma, defaultTokenService(), defaultGoogleAuthService());
+      const service = new AuthService(
+        prisma,
+        defaultTokenService(),
+        defaultGoogleAuthService(),
+      );
       await service.onModuleInit();
       const result = await service.revokeDevice(
         'user-uuid',
@@ -615,7 +651,11 @@ describe('AuthService', () => {
 
     it('sets revokedAt on the device record', async () => {
       const prisma = buildPrismaService();
-      const service = new AuthService(prisma, defaultTokenService(), defaultGoogleAuthService());
+      const service = new AuthService(
+        prisma,
+        defaultTokenService(),
+        defaultGoogleAuthService(),
+      );
       await service.onModuleInit();
       await service.revokeDevice('user-uuid', 'device-2-uuid', 'device-uuid');
 
@@ -736,7 +776,11 @@ describe('AuthService', () => {
         count: 0,
       });
 
-      const service = new AuthService(prisma, defaultTokenService(), defaultGoogleAuthService());
+      const service = new AuthService(
+        prisma,
+        defaultTokenService(),
+        defaultGoogleAuthService(),
+      );
       await service.onModuleInit();
 
       try {
@@ -783,7 +827,11 @@ describe('AuthService', () => {
         count: 3,
       });
 
-      const service = new AuthService(prisma, defaultTokenService(), defaultGoogleAuthService());
+      const service = new AuthService(
+        prisma,
+        defaultTokenService(),
+        defaultGoogleAuthService(),
+      );
       await service.onModuleInit();
       const result = await service.cleanupExpiredRecords();
 
@@ -793,7 +841,11 @@ describe('AuthService', () => {
 
     it('returns zero counts when nothing to clean', async () => {
       const prisma = buildPrismaService();
-      const service = new AuthService(prisma, defaultTokenService(), defaultGoogleAuthService());
+      const service = new AuthService(
+        prisma,
+        defaultTokenService(),
+        defaultGoogleAuthService(),
+      );
       await service.onModuleInit();
       const result = await service.cleanupExpiredRecords();
 
@@ -939,12 +991,8 @@ describe('AuthService', () => {
         fail('Should have thrown');
       } catch (error) {
         expect(error).toBeInstanceOf(AuthException);
-        expect((error as AuthException).code).toBe(
-          'GOOGLE_EMAIL_NOT_VERIFIED',
-        );
-        expect((error as AuthException).getStatus()).toBe(
-          HttpStatus.FORBIDDEN,
-        );
+        expect((error as AuthException).code).toBe('GOOGLE_EMAIL_NOT_VERIFIED');
+        expect((error as AuthException).getStatus()).toBe(HttpStatus.FORBIDDEN);
       }
     });
 
@@ -1065,11 +1113,7 @@ describe('AuthService', () => {
         mockAuthIdentityWithUser,
       );
 
-      const service = new AuthService(
-        prisma,
-        tokenSvc,
-        googleAuth,
-      );
+      const service = new AuthService(prisma, tokenSvc, googleAuth);
       await service.onModuleInit();
 
       const result = await service.recoverWithGoogle(idToken);
@@ -1101,12 +1145,8 @@ describe('AuthService', () => {
         fail('Should have thrown');
       } catch (error) {
         expect(error).toBeInstanceOf(AuthException);
-        expect((error as AuthException).code).toBe(
-          'GOOGLE_EMAIL_NOT_VERIFIED',
-        );
-        expect((error as AuthException).getStatus()).toBe(
-          HttpStatus.FORBIDDEN,
-        );
+        expect((error as AuthException).code).toBe('GOOGLE_EMAIL_NOT_VERIFIED');
+        expect((error as AuthException).getStatus()).toBe(HttpStatus.FORBIDDEN);
       }
     });
 
@@ -1131,9 +1171,7 @@ describe('AuthService', () => {
         fail('Should have thrown');
       } catch (error) {
         expect(error).toBeInstanceOf(AuthException);
-        expect((error as AuthException).code).toBe(
-          'GOOGLE_ACCOUNT_NOT_LINKED',
-        );
+        expect((error as AuthException).code).toBe('GOOGLE_ACCOUNT_NOT_LINKED');
         expect((error as AuthException).getStatus()).toBe(HttpStatus.NOT_FOUND);
       }
     });
@@ -1217,10 +1255,7 @@ describe('AuthService', () => {
       );
       await service.onModuleInit();
 
-      const result = await service.registerDeviceAfterRecovery(
-        authHeader,
-        dto,
-      );
+      const result = await service.registerDeviceAfterRecovery(authHeader, dto);
 
       expect(result.data.deviceId).toBe('device-uuid');
       expect(result.data.challengeId).toBe('challenge-uuid');

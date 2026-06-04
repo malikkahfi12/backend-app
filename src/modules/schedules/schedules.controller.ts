@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
-import { ApiOkResponse, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiOkResponse, ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { SchedulesService } from './schedules.service';
 import { ScheduleQueryDto } from './dto/schedule-query.dto';
 import { DepartureQueryDto } from './dto/departure-query.dto';
@@ -7,7 +7,7 @@ import { DepartureResponseDto } from './dto/departure-response.dto';
 import { BatchDepartureRequestDto } from './dto/batch-departure-request.dto';
 
 @ApiTags('Schedules')
-@ApiSecurity('x-api-key')
+@ApiBearerAuth()
 @Controller('schedules')
 export class SchedulesController {
   constructor(private readonly schedulesService: SchedulesService) {}
@@ -24,7 +24,7 @@ export class SchedulesController {
 }
 
 @ApiTags('Departures')
-@ApiSecurity('x-api-key')
+@ApiBearerAuth()
 @Controller('departures')
 export class DeparturesController {
   constructor(private readonly schedulesService: SchedulesService) {}

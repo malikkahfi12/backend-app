@@ -2,7 +2,7 @@ import { Body, Controller, Get, Post } from '@nestjs/common';
 import {
   ApiCreatedResponse,
   ApiOkResponse,
-  ApiSecurity,
+  ApiBearerAuth,
   ApiTags,
 } from '@nestjs/swagger';
 import { RegionService } from '../../application/services/region.service';
@@ -12,7 +12,7 @@ import { RegionResponseDto } from '../dto/region-response.dto';
 import { toRegionResponse } from '../mappers/region.mapper';
 
 @ApiTags('Regions')
-@ApiSecurity('x-api-key')
+@ApiBearerAuth()
 @Controller('regions')
 export class RegionsController {
   constructor(

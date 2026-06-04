@@ -2,7 +2,7 @@ import { Body, Controller, Get, Post } from '@nestjs/common';
 import {
   ApiCreatedResponse,
   ApiOkResponse,
-  ApiSecurity,
+  ApiBearerAuth,
   ApiTags,
 } from '@nestjs/swagger';
 import { TransitModeService } from '../../application/services/transit-mode.service';
@@ -12,7 +12,7 @@ import { TransitModeResponseDto } from '../dto/transit-mode-response.dto';
 import { toTransitModeResponse } from '../mappers/transit-mode.mapper';
 
 @ApiTags('Transit Modes')
-@ApiSecurity('x-api-key')
+@ApiBearerAuth()
 @Controller('transit-modes')
 export class TransitModesController {
   constructor(
