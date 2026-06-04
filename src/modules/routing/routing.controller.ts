@@ -6,7 +6,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { ApiOkResponse, ApiSecurity, ApiTags } from '@nestjs/swagger';
+import { ApiOkResponse, ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { RoutingGraphService } from './graph/routing-graph.service';
 import { RoutingSearchService } from './services/routing-search.service';
 import { GraphSummaryDto } from './dto/graph-summary.dto';
@@ -21,7 +21,7 @@ interface RoutingPlanResponse {
 }
 
 @ApiTags('Routing')
-@ApiSecurity('x-api-key')
+@ApiBearerAuth()
 @Controller('routing')
 export class RoutingController {
   constructor(

@@ -4,7 +4,7 @@ export default (): AppConfig => ({
   nodeEnv: process.env.NODE_ENV as NodeEnvironment,
   port: Number(process.env.PORT),
   appName: process.env.APP_NAME as string,
-  apiKey: process.env.API_KEY as string,
+  apiKey: process.env.API_KEY,
   internalServiceToken: process.env.INTERNAL_SERVICE_TOKEN as string,
   enableInternalEndpoints: process.env.ENABLE_INTERNAL_ENDPOINTS === 'true',
   corsOrigin: process.env.CORS_ORIGIN as string,

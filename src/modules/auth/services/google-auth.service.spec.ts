@@ -35,9 +35,7 @@ describe('GoogleAuthService', () => {
       };
 
       const verifySpy = jest.spyOn(OAuth2Client.prototype, 'verifyIdToken');
-      (verifySpy as jest.Mock).mockResolvedValue(
-        createMockTicket(mockPayload),
-      );
+      (verifySpy as jest.Mock).mockResolvedValue(createMockTicket(mockPayload));
 
       const result = await service.verifyIdToken('valid-id-token');
 
@@ -61,9 +59,7 @@ describe('GoogleAuthService', () => {
       };
 
       const verifySpy = jest.spyOn(OAuth2Client.prototype, 'verifyIdToken');
-      (verifySpy as jest.Mock).mockResolvedValue(
-        createMockTicket(mockPayload),
-      );
+      (verifySpy as jest.Mock).mockResolvedValue(createMockTicket(mockPayload));
 
       const result = await service.verifyIdToken('valid-id-token');
 
@@ -136,9 +132,9 @@ describe('GoogleAuthService', () => {
         ),
       );
 
-      await expect(
-        service.verifyIdToken('wrong-issuer-token'),
-      ).rejects.toThrow(AuthException);
+      await expect(service.verifyIdToken('wrong-issuer-token')).rejects.toThrow(
+        AuthException,
+      );
 
       try {
         await service.verifyIdToken('wrong-issuer-token');
@@ -159,9 +155,9 @@ describe('GoogleAuthService', () => {
         new Error('Wrong number of segments in token'),
       );
 
-      await expect(
-        service.verifyIdToken('malformed-token'),
-      ).rejects.toThrow(AuthException);
+      await expect(service.verifyIdToken('malformed-token')).rejects.toThrow(
+        AuthException,
+      );
 
       try {
         await service.verifyIdToken('malformed-token');

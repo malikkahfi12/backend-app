@@ -11,14 +11,14 @@ import {
   ApiBody,
   ApiConsumes,
   ApiCreatedResponse,
-  ApiSecurity,
+  ApiBearerAuth,
   ApiTags,
 } from '@nestjs/swagger';
 import { GtfsService } from '../gtfs.service';
 import { ImportGtfsResponseDto } from '../dto/import-gtfs.dto';
 
 @ApiTags('GTFS Import')
-@ApiSecurity('x-api-key')
+@ApiBearerAuth()
 @Controller('gtfs')
 export class GtfsController {
   constructor(private readonly gtfsService: GtfsService) {}

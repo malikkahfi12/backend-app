@@ -30,9 +30,7 @@ export class TripService {
     return this.tripRepository.findById(id);
   }
 
-  async getTripShape(
-    tripId: string,
-  ): Promise<string | null> {
+  async getTripShape(tripId: string): Promise<string | null> {
     const db = this.prismaService as any;
 
     const trip = await db.trip.findUnique({

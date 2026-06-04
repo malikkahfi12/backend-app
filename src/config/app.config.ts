@@ -7,7 +7,7 @@ export interface AppConfig {
   nodeEnv: NodeEnvironment;
   port: number;
   appName: string;
-  apiKey: string;
+  apiKey?: string;
   internalServiceToken: string;
   enableInternalEndpoints: boolean;
   corsOrigin: string;

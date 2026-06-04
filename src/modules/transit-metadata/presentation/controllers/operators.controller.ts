@@ -2,7 +2,7 @@ import { Body, Controller, Get, Post } from '@nestjs/common';
 import {
   ApiCreatedResponse,
   ApiOkResponse,
-  ApiSecurity,
+  ApiBearerAuth,
   ApiTags,
 } from '@nestjs/swagger';
 import { OperatorService } from '../../application/services/operator.service';
@@ -12,7 +12,7 @@ import { OperatorResponseDto } from '../dto/operator-response.dto';
 import { toOperatorResponse } from '../mappers/operator.mapper';
 
 @ApiTags('Operators')
-@ApiSecurity('x-api-key')
+@ApiBearerAuth()
 @Controller('operators')
 export class OperatorsController {
   constructor(

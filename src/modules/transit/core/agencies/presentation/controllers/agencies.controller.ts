@@ -10,7 +10,7 @@ import {
 import {
   ApiCreatedResponse,
   ApiOkResponse,
-  ApiSecurity,
+  ApiBearerAuth,
   ApiTags,
 } from '@nestjs/swagger';
 import { AgencyService } from '../../application/services/agency.service';
@@ -20,7 +20,7 @@ import { AgencyResponseDto } from '../dto/agency-response.dto';
 import { toAgencyResponse } from '../mappers/agency.mapper';
 
 @ApiTags('Agencies')
-@ApiSecurity('x-api-key')
+@ApiBearerAuth()
 @Controller('agencies')
 export class AgenciesController {
   constructor(private readonly agencyService: AgencyService) {}

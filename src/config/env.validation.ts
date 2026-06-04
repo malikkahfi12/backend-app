@@ -4,6 +4,7 @@ import {
   IsIn,
   IsInt,
   IsNotEmpty,
+  IsOptional,
   IsString,
   Matches,
   Min,
@@ -38,7 +39,7 @@ class EnvironmentVariables {
   APP_NAME!: string;
 
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   API_KEY!: string;
 
   @IsString()
@@ -109,6 +110,7 @@ export function validateEnv(
   const env = validatedConfig.NODE_ENV;
 
   if (
+    validatedConfig.API_KEY &&
     (env === 'development' || env === 'staging') &&
     validatedConfig.API_KEY.length < MIN_SECRET_LENGTH
   ) {

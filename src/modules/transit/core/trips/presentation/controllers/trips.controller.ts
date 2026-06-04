@@ -10,7 +10,7 @@ import {
 import {
   ApiCreatedResponse,
   ApiOkResponse,
-  ApiSecurity,
+  ApiBearerAuth,
   ApiTags,
 } from '@nestjs/swagger';
 import { TripService } from '../../application/services/trip.service';
@@ -21,7 +21,7 @@ import { TripStopDto } from '../dto/trip-stop.dto';
 import { toTripResponse } from '../mappers/trip.mapper';
 
 @ApiTags('Trips')
-@ApiSecurity('x-api-key')
+@ApiBearerAuth()
 @Controller('trips')
 export class TripsController {
   constructor(private readonly tripService: TripService) {}
@@ -62,9 +62,7 @@ export class TripsController {
   @ApiOkResponse({
     description: 'Trip shape returned as polyline6-encoded string.',
   })
-  async getTripShape(
-    @Param('tripId') tripId: string,
-  ): Promise<string | null> {
+  async getTripShape(@Param('tripId') tripId: string): Promise<string | null> {
     const shape = await this.tripService.getTripShape(tripId);
     if (!shape) throw new NotFoundException(`Trip not found or has no shape`);
     return shape;

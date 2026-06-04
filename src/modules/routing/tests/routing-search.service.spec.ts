@@ -4,7 +4,10 @@ import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { RoutingEdgeType } from '../enums/routing-edge-type.enum';
 import { ConfigService } from '@nestjs/config';
 import { AppConfig } from '../../../config/app.config';
-import { encodePolyline6, decodePolyline6 } from '../../../common/utils/polyline6';
+import {
+  encodePolyline6,
+  decodePolyline6,
+} from '../../../common/utils/polyline6';
 
 describe('RoutingSearchService', () => {
   const mockPrismaService = {} as unknown as PrismaService;
