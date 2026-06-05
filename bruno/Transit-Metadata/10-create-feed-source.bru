@@ -1,0 +1,27 @@
+meta {
+  name: Create Feed Source
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{base_url}}/feed-sources
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{access_token}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "operatorId": "{{operator_id}}",
+    "type": "GTFS_STATIC",
+    "name": "TransJakarta GTFS",
+    "url": "https://transitfeeds.com/p/transjakarta/latest/download",
+    "format": "GTFS_ZIP",
+    "isActive": true
+  }
+}

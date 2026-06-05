@@ -1,0 +1,24 @@
+meta {
+  name: Update Profile
+  type: http
+  seq: 12
+}
+
+patch {
+  url: {{base_url}}/auth/me
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{access_token}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "username": "newhandle",
+    "displayName": "New Name",
+    "avatarUrl": null
+  }
+}

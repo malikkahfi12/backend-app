@@ -1,0 +1,15 @@
+meta {
+  name: Get Schedules
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/schedules?stopId={{stop_id}}&limit=20
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{access_token}}
+}

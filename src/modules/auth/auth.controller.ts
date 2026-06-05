@@ -7,14 +7,19 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
+  UploadedFile,
   UseFilters,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiBody,
   ApiConflictResponse,
+  ApiConsumes,
   ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiNotFoundResponse,
@@ -22,6 +27,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import { Public } from '../security/decorators/public.decorator';
 import { AuthService } from './auth.service';
@@ -45,6 +51,8 @@ import { RefreshRequestDto } from './dto/refresh-request.dto';
 import { RegisterDeviceDto } from './dto/register-device.dto';
 import { RegisterDeviceResponseDto } from './dto/register-device-response.dto';
 import { TokenResponseDto } from './dto/token-response.dto';
+import { UpdateMeDto } from './dto/update-me.dto';
+import { AuthException } from './exceptions/auth.exception';
 import { AuthExceptionFilter } from './exceptions/auth-exception.filter';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import type { CurrentUserPayload } from './types/current-user.type';
@@ -194,6 +202,141 @@ export class AuthController {
     @CurrentUser() user: CurrentUserPayload,
   ): Promise<{ data: CurrentUserPayload }> {
     return { data: this.authService.getCurrentUser(user) };
+  }
+
+  @Patch('me')
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @ApiBearerAuth()
+  @ApiOkResponse({
+    description: 'Profile updated successfully.',
+    schema: {
+      example: {
+        success: true,
+        data: {
+          id: '550e8400-e29b-41d4-a716-446655440000',
+          username: 'newhandle',
+          displayName: 'New Name',
+          avatarUrl:
+            'https://s3.us-west-004.backblazeb2.com/bucket/avatars/abc.jpg',
+          avatarInitials: 'NN',
+          isActive: true,
+          deviceId: '660e8400-e29b-41d4-a716-446655440001',
+          createdAt: '2025-05-29T12:00:00.000Z',
+        },
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid access token.',
+    schema: { example: UNAUTHORIZED_EXAMPLE },
+  })
+  @ApiBadRequestResponse({
+    description: 'No fields provided or invalid values.',
+    schema: {
+      example: {
+        success: false,
+        error: {
+          code: 'NO_FIELDS_PROVIDED',
+          message: 'At least one field must be provided',
+        },
+      },
+    },
+  })
+  @ApiConflictResponse({
+    description: 'Username already exists or is reserved.',
+    schema: {
+      example: {
+        success: false,
+        error: {
+          code: 'USERNAME_ALREADY_EXISTS',
+          message: 'Username already exists',
+        },
+      },
+    },
+  })
+  async updateMe(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: UpdateMeDto,
+  ): Promise<{ data: CurrentUserPayload }> {
+    return {
+      data: await this.authService.updateMe(user.id, dto, user.deviceId),
+    };
+  }
+
+  @Post('me/avatar')
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 5 * 1024 * 1024 },
+      fileFilter: (_req, file, cb) => {
+        const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        if (allowed.includes(file.mimetype)) {
+          cb(null, true);
+        } else {
+          cb(new Error(`Unsupported file type: ${file.mimetype}`), false);
+        }
+      },
+    }),
+  )
+  @ApiBearerAuth()
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['file'],
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'Avatar image (JPEG, PNG, WebP, GIF, max 5MB)',
+        },
+      },
+    },
+  })
+  @ApiOkResponse({
+    description: 'Avatar uploaded and applied.',
+    schema: {
+      example: {
+        success: true,
+        data: {
+          avatarUrl:
+            'https://s3.us-west-004.backblazeb2.com/bucket/avatars/abc.jpg',
+        },
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid access token.',
+    schema: { example: UNAUTHORIZED_EXAMPLE },
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid or missing file.',
+    schema: {
+      example: {
+        success: false,
+        error: {
+          code: 'INVALID_FILE',
+          message: 'Unsupported file type: image/svg+xml',
+        },
+      },
+    },
+  })
+  async uploadAvatar(
+    @CurrentUser() user: CurrentUserPayload,
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<{ data: { avatarUrl: string } }> {
+    if (!file) {
+      throw new AuthException(
+        'INVALID_FILE',
+        'No file provided',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    return {
+      data: await this.authService.uploadAvatar(user.id, file),
+    };
   }
 
   @Get('devices')

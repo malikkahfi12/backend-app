@@ -1,0 +1,15 @@
+meta {
+  name: Get Departures
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/departures?stopId={{stop_id}}&limit=10
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{access_token}}
+}

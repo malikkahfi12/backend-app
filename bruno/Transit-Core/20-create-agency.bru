@@ -1,0 +1,30 @@
+meta {
+  name: Create Agency
+  type: http
+  seq: 20
+}
+
+post {
+  url: {{base_url}}/agencies
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{access_token}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "regionId": "{{region_id}}",
+    "operatorId": "{{operator_id}}",
+    "name": "TransJakarta",
+    "slug": "transjakarta",
+    "timezone": "Asia/Jakarta",
+    "language": "id",
+    "phone": "+62211500",
+    "website": "https://transjakarta.co.id",
+    "isActive": true
+  }
+}

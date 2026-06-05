@@ -25,6 +25,13 @@ export default (): AppConfig => ({
     apiKey: process.env.STADIAMAPS_API_KEY as string,
     baseUrl: process.env.STADIAMAPS_BASE_URL ?? 'https://api.stadiamaps.com',
   },
+  storage: {
+    endpoint: process.env.STORAGE_ENDPOINT as string,
+    region: process.env.STORAGE_REGION as string,
+    applicationKeyId: process.env.STORAGE_APPLICATION_KEY_ID as string,
+    applicationKey: process.env.STORAGE_APPLICATION_KEY as string,
+    bucketName: process.env.STORAGE_BUCKET_NAME as string,
+  },
   google: {
     clientId: process.env.GOOGLE_CLIENT_ID as string,
   },

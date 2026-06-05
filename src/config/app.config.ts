@@ -3,6 +3,14 @@ import { GoogleAuthConfig } from './google.config';
 
 export type NodeEnvironment = 'development' | 'test' | 'staging' | 'production';
 
+export interface StorageConfig {
+  endpoint: string;
+  region: string;
+  applicationKeyId: string;
+  applicationKey: string;
+  bucketName: string;
+}
+
 export interface AppConfig {
   nodeEnv: NodeEnvironment;
   port: number;
@@ -23,5 +31,6 @@ export interface AppConfig {
     apiKey: string;
     baseUrl: string;
   };
+  storage: StorageConfig;
   google: GoogleAuthConfig;
 }

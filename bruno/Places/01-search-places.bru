@@ -1,0 +1,15 @@
+meta {
+  name: Search Places
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/places/search?q=Gedung+Sate&lat=-6.902&lng=107.618&limit=5
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{access_token}}
+}

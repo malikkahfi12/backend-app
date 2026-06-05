@@ -1,0 +1,15 @@
+meta {
+  name: Stop Connections
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{base_url}}/routing/graph/stops/{{stop_id}}/connections
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{access_token}}
+}

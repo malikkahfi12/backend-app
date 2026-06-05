@@ -1,0 +1,22 @@
+meta {
+  name: Connect Google
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{base_url}}/auth/identities/google/connect
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{access_token}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "idToken": "paste-google-id-token-here"
+  }
+}

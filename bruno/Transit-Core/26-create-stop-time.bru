@@ -1,0 +1,28 @@
+meta {
+  name: Create Stop Time
+  type: http
+  seq: 26
+}
+
+post {
+  url: {{base_url}}/stop-times
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{access_token}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "tripId": "{{trip_id}}",
+    "stopId": "{{stop_id}}",
+    "stopSequence": 1,
+    "arrivalTime": "05:30:00",
+    "departureTime": "05:30:30",
+    "pickupType": 0,
+    "dropOffType": 0
+  }
+}

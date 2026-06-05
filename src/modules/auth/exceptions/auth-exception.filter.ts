@@ -9,9 +9,12 @@ import {
 import { Response } from 'express';
 import { AuthException } from './auth.exception';
 
-@Catch(AuthException, HttpException)
+@Catch(AuthException, HttpException, Error)
 export class AuthExceptionFilter implements ExceptionFilter {
-  catch(exception: AuthException | HttpException, host: ArgumentsHost): void {
+  catch(
+    exception: AuthException | HttpException | Error,
+    host: ArgumentsHost,
+  ): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
 
@@ -57,6 +60,12 @@ export class AuthExceptionFilter implements ExceptionFilter {
         } else if (first.toLowerCase().includes('deviceid')) {
           code = 'DEVICE_NOT_FOUND';
           message = 'Device not found';
+        } else if (
+          first.toLowerCase().includes('file') ||
+          first.toLowerCase().includes('unsupported')
+        ) {
+          code = 'INVALID_FILE';
+          message = 'Invalid or unsupported file';
         }
       } else {
         message = 'Validation failed';
@@ -69,11 +78,22 @@ export class AuthExceptionFilter implements ExceptionFilter {
       return;
     }
 
-    response.status(exception.getStatus()).json({
+    if (exception instanceof HttpException) {
+      response.status(exception.getStatus()).json({
+        success: false,
+        error: {
+          code: 'ERROR',
+          message: exception.message,
+        },
+      });
+      return;
+    }
+
+    response.status(HttpStatus.BAD_REQUEST).json({
       success: false,
       error: {
-        code: 'ERROR',
-        message: exception.message,
+        code: 'INVALID_FILE',
+        message: exception.message || 'File upload failed',
       },
     });
   }

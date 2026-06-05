@@ -3,6 +3,7 @@ import _sodium from 'libsodium-wrappers';
 import { Prisma } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../infrastructure/database/prisma.service';
+import { StorageService } from '../../infrastructure/storage/storage.service';
 import { ChallengeRequestDto } from './dto/challenge-request.dto';
 import { ChallengeResponseDto } from './dto/challenge-response.dto';
 import { DeviceListResponseDto } from './dto/device-response.dto';
@@ -10,6 +11,7 @@ import { LoginRequestDto } from './dto/login-request.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
 import { RegisterDeviceDto } from './dto/register-device.dto';
 import { RegisterDeviceResponseDto } from './dto/register-device-response.dto';
+import { UpdateMeDto } from './dto/update-me.dto';
 import { AuthException } from './exceptions/auth.exception';
 import { GoogleAuthService } from './services/google-auth.service';
 import { TokenService } from './services/token.service';
@@ -43,6 +45,7 @@ export class AuthService implements OnModuleInit {
     private readonly prismaService: PrismaService,
     private readonly tokenService: TokenService,
     private readonly googleAuthService: GoogleAuthService,
+    private readonly storageService: StorageService,
   ) {}
 
   async onModuleInit() {
@@ -414,6 +417,110 @@ export class AuthService implements OnModuleInit {
 
   getCurrentUser(user: CurrentUserPayload): CurrentUserPayload {
     return user;
+  }
+
+  async updateMe(
+    userId: string,
+    dto: UpdateMeDto,
+    deviceId: string,
+  ): Promise<CurrentUserPayload> {
+    const hasUsername = dto.username !== undefined;
+    const hasDisplayName = dto.displayName !== undefined;
+    const hasAvatarUrl = dto.avatarUrl !== undefined;
+
+    if (!hasUsername && !hasDisplayName && !hasAvatarUrl) {
+      throw new AuthException(
+        'NO_FIELDS_PROVIDED',
+        'At least one field must be provided',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const current = await this.prismaService.user.findUniqueOrThrow({
+      where: { id: userId },
+    });
+
+    const data: {
+      username?: string;
+      displayName?: string;
+      avatarUrl?: string | null;
+    } = {};
+
+    if (hasUsername) {
+      const username = dto.username as string;
+      if (RESERVED_USERNAMES.has(username)) {
+        throw new AuthException(
+          'USERNAME_RESERVED',
+          'This username is reserved',
+          HttpStatus.CONFLICT,
+        );
+      }
+      if (username !== current.username) {
+        data.username = username;
+      }
+    }
+
+    if (hasDisplayName && dto.displayName !== current.displayName) {
+      data.displayName = dto.displayName;
+    }
+
+    if (hasAvatarUrl) {
+      if (dto.avatarUrl !== current.avatarUrl) {
+        if (current.avatarUrl && dto.avatarUrl === null) {
+          await this.storageService.deleteFileByUrl(current.avatarUrl);
+        }
+        data.avatarUrl = dto.avatarUrl;
+      }
+    }
+
+    if (Object.keys(data).length === 0) {
+      const user = await this.prismaService.user.findUniqueOrThrow({
+        where: { id: userId },
+      });
+      return this.toCurrentUserPayload(user, deviceId);
+    }
+
+    try {
+      const updated = await this.prismaService.user.update({
+        where: { id: userId },
+        data,
+      });
+      return this.toCurrentUserPayload(updated, deviceId);
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new AuthException(
+          'USERNAME_ALREADY_EXISTS',
+          'Username already exists',
+          HttpStatus.CONFLICT,
+        );
+      }
+      throw error;
+    }
+  }
+
+  async uploadAvatar(
+    userId: string,
+    file: Express.Multer.File,
+  ): Promise<{ avatarUrl: string }> {
+    const current = await this.prismaService.user.findUniqueOrThrow({
+      where: { id: userId },
+    });
+    const oldAvatarUrl = current.avatarUrl;
+    const newUrl = await this.storageService.uploadAvatar(file, userId);
+
+    await this.prismaService.user.update({
+      where: { id: userId },
+      data: { avatarUrl: newUrl },
+    });
+
+    if (oldAvatarUrl) {
+      await this.storageService.deleteFileByUrl(oldAvatarUrl);
+    }
+
+    return { avatarUrl: newUrl };
   }
 
   async listDevices(
@@ -844,6 +951,29 @@ export class AuthService implements OnModuleInit {
       .map((w) => w.charAt(0))
       .join('');
     return initials.toUpperCase();
+  }
+
+  private toCurrentUserPayload(
+    user: {
+      id: string;
+      username: string;
+      displayName: string;
+      avatarUrl: string | null;
+      isActive: boolean;
+      createdAt: Date;
+    },
+    deviceId: string,
+  ): CurrentUserPayload {
+    return {
+      id: user.id,
+      username: user.username,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+      avatarInitials: this.computeInitials(user.displayName),
+      isActive: user.isActive,
+      deviceId,
+      createdAt: user.createdAt.toISOString(),
+    };
   }
 
   private isValidPublicKey(key: string): boolean {

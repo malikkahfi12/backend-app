@@ -1,0 +1,26 @@
+meta {
+  name: Create Region
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url}}/regions
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{access_token}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "countryId": "{{country_id}}",
+    "code": "jakarta",
+    "name": "Jakarta",
+    "timezone": "Asia/Jakarta",
+    "defaultLocale": "id-ID"
+  }
+}

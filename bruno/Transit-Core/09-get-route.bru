@@ -1,0 +1,15 @@
+meta {
+  name: Get Route
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{base_url}}/routes/{{route_id}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{access_token}}
+}

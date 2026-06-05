@@ -1,0 +1,29 @@
+meta {
+  name: Create Route
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{base_url}}/routes
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{access_token}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "agencyId": "{{agency_id}}",
+    "transitModeId": "{{transit_mode_id}}",
+    "shortName": "1",
+    "longName": "Blok M - Kota",
+    "description": "Corridor 1 BRT",
+    "color": "#E60000",
+    "textColor": "#FFFFFF",
+    "isActive": true
+  }
+}

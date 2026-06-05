@@ -1,0 +1,15 @@
+meta {
+  name: Nearby Stops
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{base_url}}/stops/nearby?lat={{lat}}&lng={{lng}}&radius=500
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{access_token}}
+}

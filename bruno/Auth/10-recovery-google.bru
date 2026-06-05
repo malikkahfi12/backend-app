@@ -1,0 +1,21 @@
+meta {
+  name: Recovery Google
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{base_url}}/auth/recovery/google
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "idToken": "paste-google-id-token-here"
+  }
+}

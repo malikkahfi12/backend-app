@@ -1,0 +1,26 @@
+meta {
+  name: Create Operator
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{base_url}}/operators
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{access_token}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "regionId": "{{region_id}}",
+    "code": "transjakarta",
+    "name": "TransJakarta",
+    "type": "BUS",
+    "websiteUrl": "https://transjakarta.co.id"
+  }
+}
