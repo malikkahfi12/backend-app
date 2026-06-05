@@ -4,6 +4,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { APP_GUARD } from '@nestjs/core';
 import { AppConfig } from '../../config/app.config';
 import { DatabaseModule } from '../../infrastructure/database/database.module';
+import { StorageModule } from '../../infrastructure/storage/storage.module';
 import { AuthConfigService } from './auth.config.service';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -15,6 +16,7 @@ import { GoogleAuthService } from './services/google-auth.service';
 @Module({
   imports: [
     DatabaseModule,
+    StorageModule,
     JwtModule.registerAsync({
       useFactory: (configService: ConfigService<AppConfig, true>) => ({
         secret: configService.get('auth.accessSecret', { infer: true }),

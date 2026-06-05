@@ -1,0 +1,24 @@
+meta {
+  name: Recovery Register Device
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{base_url}}/auth/recovery/register-device
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{access_token}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "publicKey": "IADkYx5hPFZe5ckSnBCctH7DYF_vbgMjJeI1zQORrRI",
+    "deviceName": "iPhone 17 Pro",
+    "platform": "ios"
+  }
+}

@@ -1,0 +1,22 @@
+meta {
+  name: Jakarta Import
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/internal/transit/import/jakarta/{{feed_source_id}}
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{internal_token}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "path": "/data/gtfs/jakarta/"
+  }
+}

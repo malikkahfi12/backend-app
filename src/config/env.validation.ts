@@ -90,6 +90,26 @@ class EnvironmentVariables {
 
   @IsString()
   @IsNotEmpty()
+  STORAGE_ENDPOINT!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  STORAGE_REGION!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  STORAGE_APPLICATION_KEY_ID!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  STORAGE_APPLICATION_KEY!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  STORAGE_BUCKET_NAME!: string;
+
+  @IsString()
+  @IsNotEmpty()
   GOOGLE_CLIENT_ID!: string;
 }
 

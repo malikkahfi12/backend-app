@@ -5,7 +5,7 @@ import { IsNotEmpty, IsString } from 'class-validator';
 export class ChallengeRequestDto {
   @ApiProperty({
     description: 'Username of the user to challenge',
-    example: 'malik',
+    example: 'lika',
   })
   @Transform(({ value }) =>
     typeof value === 'string' ? value.toLowerCase().trim() : value,

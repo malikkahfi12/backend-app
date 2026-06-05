@@ -1,0 +1,15 @@
+meta {
+  name: List Stop Times
+  type: http
+  seq: 24
+}
+
+get {
+  url: {{base_url}}/stop-times
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{access_token}}
+}

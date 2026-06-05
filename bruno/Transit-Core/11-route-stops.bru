@@ -1,0 +1,15 @@
+meta {
+  name: Route Stops
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{base_url}}/routes/{{route_id}}/stops
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{access_token}}
+}

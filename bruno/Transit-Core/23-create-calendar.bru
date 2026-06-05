@@ -1,0 +1,32 @@
+meta {
+  name: Create Calendar
+  type: http
+  seq: 23
+}
+
+post {
+  url: {{base_url}}/calendars
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{access_token}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "serviceId": "{{service_id}}",
+    "monday": true,
+    "tuesday": true,
+    "wednesday": true,
+    "thursday": true,
+    "friday": true,
+    "saturday": true,
+    "sunday": false,
+    "startDate": "2026-01-01",
+    "endDate": "2026-12-31",
+    "isActive": true
+  }
+}

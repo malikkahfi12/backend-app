@@ -1,0 +1,15 @@
+meta {
+  name: List Calendars
+  type: http
+  seq: 21
+}
+
+get {
+  url: {{base_url}}/calendars
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{access_token}}
+}

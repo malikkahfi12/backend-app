@@ -1,0 +1,23 @@
+meta {
+  name: Create Transit Mode
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{base_url}}/transit-modes
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{access_token}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "code": "BUS",
+    "name": "Bus"
+  }
+}

@@ -1,0 +1,15 @@
+meta {
+  name: List Routes
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{base_url}}/routes?limit=20&page=1
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{access_token}}
+}

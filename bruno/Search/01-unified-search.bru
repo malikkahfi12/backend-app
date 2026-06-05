@@ -1,0 +1,15 @@
+meta {
+  name: Unified Search
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/search?q=Stasiun&lat={{lat}}&lng={{lng}}&limit=5
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{access_token}}
+}
