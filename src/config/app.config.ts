@@ -24,6 +24,9 @@ export interface AppConfig {
   database: {
     url: string;
   };
+  logging: {
+    level: string;
+  };
   redis: {
     url: string;
   };

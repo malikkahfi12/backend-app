@@ -5,20 +5,35 @@ import {
   ExceptionFilter,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { AuthException } from './auth.exception';
 
 @Catch(AuthException, HttpException, Error)
 export class AuthExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(AuthExceptionFilter.name);
+
   catch(
     exception: AuthException | HttpException | Error,
     host: ArgumentsHost,
   ): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
+    const request = ctx.getRequest<Request>();
 
     if (exception instanceof AuthException) {
+      this.logger.warn(
+        {
+          code: exception.code,
+          message: exception.message,
+          status: exception.getStatus(),
+          method: request.method,
+          url: request.url,
+        },
+        `${request.method} ${request.url} ${exception.getStatus()} (${exception.code})`,
+      );
+
       response.status(exception.getStatus()).json({
         success: false,
         error: {
@@ -26,6 +41,9 @@ export class AuthExceptionFilter implements ExceptionFilter {
           message: exception.message,
         },
       });
+
+      delete (response as unknown as Record<string, unknown>).err;
+      (response as unknown as Record<string, number>).statusCode = 200;
       return;
     }
 
@@ -71,14 +89,39 @@ export class AuthExceptionFilter implements ExceptionFilter {
         message = 'Validation failed';
       }
 
+      this.logger.warn(
+        {
+          code,
+          message,
+          status: HttpStatus.BAD_REQUEST,
+          method: request.method,
+          url: request.url,
+        },
+        `${request.method} ${request.url} 400 (${code})`,
+      );
+
       response.status(HttpStatus.BAD_REQUEST).json({
         success: false,
         error: { code, message },
       });
+
+      delete (response as unknown as Record<string, unknown>).err;
+      (response as unknown as Record<string, number>).statusCode = 200;
       return;
     }
 
     if (exception instanceof HttpException) {
+      this.logger.warn(
+        {
+          code: 'ERROR',
+          message: exception.message,
+          status: exception.getStatus(),
+          method: request.method,
+          url: request.url,
+        },
+        `${request.method} ${request.url} ${exception.getStatus()} (ERROR)`,
+      );
+
       response.status(exception.getStatus()).json({
         success: false,
         error: {
@@ -86,15 +129,32 @@ export class AuthExceptionFilter implements ExceptionFilter {
           message: exception.message,
         },
       });
+
+      delete (response as unknown as Record<string, unknown>).err;
+      (response as unknown as Record<string, number>).statusCode = 200;
       return;
     }
 
-    response.status(HttpStatus.BAD_REQUEST).json({
+    this.logger.error(
+      {
+        code: 'INTERNAL_ERROR',
+        message: exception.message || 'File upload failed',
+        method: request.method,
+        url: request.url,
+        stack: exception instanceof Error ? exception.stack : undefined,
+      },
+      `${request.method} ${request.url} failed`,
+    );
+
+    response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
       success: false,
       error: {
-        code: 'INVALID_FILE',
-        message: exception.message || 'File upload failed',
+        code: 'INTERNAL_ERROR',
+        message: exception.message || 'Internal server error',
       },
     });
+
+    delete (response as unknown as Record<string, unknown>).err;
+    (response as unknown as Record<string, number>).statusCode = 200;
   }
 }

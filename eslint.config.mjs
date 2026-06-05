@@ -34,6 +34,7 @@ export default tseslint.config(
   },
   {
     files: [
+      'src/**/*.spec.ts',
       'src/common/utils/*.ts',
       'src/modules/gtfs/**/*.ts',
       'src/modules/schedules/**/*.ts',
