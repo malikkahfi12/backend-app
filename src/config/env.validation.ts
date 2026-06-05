@@ -73,6 +73,10 @@ class EnvironmentVariables {
   JWT_REFRESH_EXPIRES_IN!: string;
 
   @IsString()
+  @IsIn(['trace', 'debug', 'info', 'warn', 'error', 'fatal'])
+  LOG_LEVEL!: string;
+
+  @IsString()
   @IsNotEmpty()
   DATABASE_URL!: string;
 

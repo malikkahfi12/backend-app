@@ -3,8 +3,8 @@ import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AppConfigModule } from './config/config.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
-import { RequestLoggingInterceptor } from './common/interceptors/request-logging.interceptor';
 import { WrapResponseInterceptor } from './common/interceptors/wrap-response.interceptor';
+import { PinoLoggerModule } from './infrastructure/logging/pino-logger.module';
 import { DatabaseModule } from './infrastructure/database/database.module';
 import { RedisModule } from './infrastructure/redis/redis.module';
 import { HealthModule } from './modules/health/health.module';
@@ -27,6 +27,7 @@ import { AuthModule } from './modules/auth/auth.module';
         limit: 100,
       },
     ]),
+    PinoLoggerModule,
     DatabaseModule,
     RedisModule,
     SecurityModule,
@@ -44,10 +45,6 @@ import { AuthModule } from './modules/auth/auth.module';
     {
       provide: APP_FILTER,
       useClass: GlobalExceptionFilter,
-    },
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: RequestLoggingInterceptor,
     },
     {
       provide: APP_INTERCEPTOR,

@@ -15,6 +15,9 @@ export default (): AppConfig => ({
     refreshSecret: process.env.JWT_REFRESH_SECRET as string,
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN ?? '30d',
   },
+  logging: {
+    level: process.env.LOG_LEVEL ?? 'info',
+  },
   database: {
     url: process.env.DATABASE_URL as string,
   },

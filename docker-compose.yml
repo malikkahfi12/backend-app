@@ -10,6 +10,14 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        tag: '{{.Name}}/{{.ID}}'
+        labels: 'app,service'
+    labels:
+      app: transitly
+      service: api
 
   redis:
     image: redis:8.6-alpine
@@ -42,6 +50,44 @@ services:
       timeout: 5s
       retries: 5
 
+  # ── Uncomment to enable Loki + Grafana + Promtail ──
+  # ── See GUIDE.md > Production Monitoring section ───
+
+  # loki:
+  #   image: grafana/loki:3.7.1
+  #   ports:
+  #     - '3100:3100'
+  #   command: -config.file=/etc/loki/local-config.yaml
+  #   volumes:
+  #     - loki_data:/loki
+
+  # promtail:
+  #   image: grafana/promtail:3.7.1
+  #   volumes:
+  #     - ./ops/promtail-config.yml:/etc/promtail/config.yml
+  #     - /var/lib/docker/containers:/var/lib/docker/containers:ro
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #   command: -config.file=/etc/promtail/config.yml
+  #   depends_on:
+  #     - loki
+
+  # grafana:
+  #   image: grafana/grafana:latest
+  #   ports:
+  #     - '3001:3000'
+  #   environment:
+  #     GF_SECURITY_ADMIN_USER: admin
+  #     GF_SECURITY_ADMIN_PASSWORD: admin
+  #     GF_INSTALL_PLUGINS: ''
+  #   volumes:
+  #     - grafana_data:/var/lib/grafana
+  #   depends_on:
+  #     - loki
+
 volumes:
   postgres_data:
   redis_data:
+
+  # ── Uncomment to enable Loki + Grafana persistence ──
+  # loki_data:
+  # grafana_data:
