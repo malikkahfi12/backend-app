@@ -102,15 +102,19 @@ class EnvironmentVariables {
 
   @IsString()
   @IsNotEmpty()
-  STORAGE_APPLICATION_KEY_ID!: string;
+  STORAGE_ACCESS_KEY_ID!: string;
 
   @IsString()
   @IsNotEmpty()
-  STORAGE_APPLICATION_KEY!: string;
+  STORAGE_SECRET_ACCESS_KEY!: string;
 
   @IsString()
   @IsNotEmpty()
   STORAGE_BUCKET_NAME!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  STORAGE_PUBLIC_URL!: string;
 
   @IsString()
   @IsNotEmpty()

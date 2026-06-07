@@ -31,9 +31,10 @@ export default (): AppConfig => ({
   storage: {
     endpoint: process.env.STORAGE_ENDPOINT as string,
     region: process.env.STORAGE_REGION as string,
-    applicationKeyId: process.env.STORAGE_APPLICATION_KEY_ID as string,
-    applicationKey: process.env.STORAGE_APPLICATION_KEY as string,
+    accessKeyId: process.env.STORAGE_ACCESS_KEY_ID as string,
+    secretAccessKey: process.env.STORAGE_SECRET_ACCESS_KEY as string,
     bucketName: process.env.STORAGE_BUCKET_NAME as string,
+    publicUrl: process.env.STORAGE_PUBLIC_URL as string,
   },
   google: {
     clientId: process.env.GOOGLE_CLIENT_ID as string,
