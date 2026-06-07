@@ -6,9 +6,10 @@ export type NodeEnvironment = 'development' | 'test' | 'staging' | 'production';
 export interface StorageConfig {
   endpoint: string;
   region: string;
-  applicationKeyId: string;
-  applicationKey: string;
+  accessKeyId: string;
+  secretAccessKey: string;
   bucketName: string;
+  publicUrl: string;
 }
 
 export interface AppConfig {

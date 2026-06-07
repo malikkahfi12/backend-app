@@ -35,14 +35,14 @@ export class StorageService {
     const config = configService.get('storage', { infer: true });
 
     this.bucketName = config.bucketName;
-    this.baseUrl = `${config.endpoint}/${this.bucketName}`;
+    this.baseUrl = config.publicUrl;
 
     this.s3 = new S3Client({
       region: config.region,
       endpoint: config.endpoint,
       credentials: {
-        accessKeyId: config.applicationKeyId,
-        secretAccessKey: config.applicationKey,
+        accessKeyId: config.accessKeyId,
+        secretAccessKey: config.secretAccessKey,
       },
       forcePathStyle: true,
     });
