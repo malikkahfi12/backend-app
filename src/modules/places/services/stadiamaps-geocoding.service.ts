@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppConfig } from '@/config/app.config';
+import { RedisService } from '@/infrastructure/redis/redis.service';
 
 interface StadiaMapsFeature {
   type: 'Feature';
@@ -38,13 +39,18 @@ const TIMEOUT_MS = 10_000;
 
 const REGIONAL_BBOX_DEGREES = 1.0;
 
+const GEOCODE_CACHE_TTL_SECONDS = 86_400;
+
 @Injectable()
 export class StadiaMapsGeocodingService {
   private readonly logger = new Logger(StadiaMapsGeocodingService.name);
   private readonly apiKey: string;
   private readonly baseUrl: string;
 
-  constructor(configService: ConfigService<AppConfig, true>) {
+  constructor(
+    configService: ConfigService<AppConfig, true>,
+    private readonly redis: RedisService,
+  ) {
     this.apiKey = configService.get('stadiamaps.apiKey', { infer: true });
     this.baseUrl = configService.get('stadiamaps.baseUrl', {
       infer: true,
@@ -53,15 +59,19 @@ export class StadiaMapsGeocodingService {
 
   async search(
     query: string,
-    opts?: { lat?: number; lng?: number; limit?: number },
+    opts?: { lat?: number; lng?: number; limit?: number; lang?: string },
   ): Promise<NormalizedPlaceResult[]> {
     const limit = opts?.limit ?? 5;
-    const fetchLimit = limit * 2;
+    const fetchLimit = limit + 2;
     const params = new URLSearchParams({
       api_key: this.apiKey,
       text: query,
       size: String(fetchLimit),
     });
+
+    if (opts?.lang) {
+      params.set('lang', opts.lang);
+    }
 
     if (opts?.lng !== undefined && opts?.lat !== undefined) {
       params.set('focus.point.lon', String(opts.lng));
@@ -77,6 +87,20 @@ export class StadiaMapsGeocodingService {
       params.set('boundary.rect.max_lat', String(maxLat));
     }
 
+    const cacheKey = `stadiamaps:geocode:search:${query.trim().toLowerCase()}:${(opts?.lat ?? 0).toFixed(3)}:${(opts?.lng ?? 0).toFixed(3)}:${limit}:${opts?.lang ?? ''}`;
+
+    try {
+      const cached = await this.redis.get<NormalizedPlaceResult[]>(cacheKey);
+      if (cached !== null) {
+        this.logger.log(`Cache HIT for search: "${query}" (limit=${limit})`);
+        return cached;
+      }
+    } catch {
+      this.logger.warn(
+        `Redis get failed for search cache, falling through to API`,
+      );
+    }
+
     const url = `${this.baseUrl}/geocoding/v1/search?${params.toString()}`;
 
     this.logger.log(`Geocoding search: "${query}" (limit=${limit})`);
@@ -88,7 +112,7 @@ export class StadiaMapsGeocodingService {
       return [];
     }
 
-    return data.features
+    const results = data.features
       .map((f) => this.normalizeSearchResult(f))
       .filter(
         (r, i, arr) =>
@@ -97,12 +121,34 @@ export class StadiaMapsGeocodingService {
           ) === i,
       )
       .slice(0, limit);
+
+    try {
+      await this.redis.set(cacheKey, results, GEOCODE_CACHE_TTL_SECONDS);
+    } catch {
+      this.logger.warn(`Redis set failed for search cache`);
+    }
+
+    return results;
   }
 
   async reverse(
     lat: number,
     lng: number,
   ): Promise<NormalizedReverseResult | null> {
+    const cacheKey = `stadiamaps:geocode:reverse:${lat.toFixed(5)}:${lng.toFixed(5)}`;
+
+    try {
+      const cached = await this.redis.get<NormalizedReverseResult>(cacheKey);
+      if (cached !== null) {
+        this.logger.log(`Cache HIT for reverse: (${lat}, ${lng})`);
+        return cached;
+      }
+    } catch {
+      this.logger.warn(
+        `Redis get failed for reverse cache, falling through to API`,
+      );
+    }
+
     const params = new URLSearchParams({
       api_key: this.apiKey,
       'point.lat': String(lat),
@@ -119,7 +165,15 @@ export class StadiaMapsGeocodingService {
       return null;
     }
 
-    return this.normalizeReverseResult(data.features[0]);
+    const result = this.normalizeReverseResult(data.features[0]);
+
+    try {
+      await this.redis.set(cacheKey, result, GEOCODE_CACHE_TTL_SECONDS);
+    } catch {
+      this.logger.warn(`Redis set failed for reverse cache`);
+    }
+
+    return result;
   }
 
   private normalizeSearchResult(f: StadiaMapsFeature): NormalizedPlaceResult {

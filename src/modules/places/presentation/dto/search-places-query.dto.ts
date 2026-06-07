@@ -50,4 +50,12 @@ export class SearchPlacesQueryDto {
   @Min(1)
   @Max(10)
   limit?: number = 5;
+
+  @ApiPropertyOptional({
+    example: 'id',
+    description: 'BCP47 language tag for localized results (e.g., id, en, ko)',
+  })
+  @IsOptional()
+  @IsString()
+  lang?: string;
 }

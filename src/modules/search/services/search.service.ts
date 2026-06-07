@@ -43,7 +43,7 @@ export class SearchService {
 
   async aggregate(
     query: string,
-    opts?: { lat?: number; lng?: number; limit?: number },
+    opts?: { lat?: number; lng?: number; limit?: number; lang?: string },
   ): Promise<UnifiedSearchResponse> {
     const limit = opts?.limit ?? 5;
 
@@ -53,6 +53,7 @@ export class SearchService {
         lat: opts?.lat,
         lng: opts?.lng,
         limit,
+        lang: opts?.lang,
       }),
     ]);
 

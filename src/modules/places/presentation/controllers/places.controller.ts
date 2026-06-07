@@ -27,6 +27,7 @@ export class PlacesController {
       lat: query.lat,
       lng: query.lng,
       limit: query.limit,
+      lang: query.lang,
     });
     return results;
   }

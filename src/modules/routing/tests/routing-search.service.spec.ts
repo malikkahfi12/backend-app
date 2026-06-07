@@ -1,6 +1,7 @@
 import { RoutingSearchService } from '../services/routing-search.service';
 import { RoutingGraphService } from '../graph/routing-graph.service';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
+import { RedisService } from '../../../infrastructure/redis/redis.service';
 import { RoutingEdgeType } from '../enums/routing-edge-type.enum';
 import { ConfigService } from '@nestjs/config';
 import { AppConfig } from '../../../config/app.config';
@@ -21,6 +22,11 @@ describe('RoutingSearchService', () => {
       return config[key];
     }),
   } as unknown as ConfigService<AppConfig, true>;
+
+  const mockRedis = {
+    get: jest.fn().mockResolvedValue(null),
+    set: jest.fn().mockResolvedValue(true),
+  } as unknown as RedisService;
 
   const mockGraph = {
     nodes: new Map([
@@ -74,6 +80,7 @@ describe('RoutingSearchService', () => {
       mockGraphService,
       mockPrismaService,
       mockConfigService,
+      mockRedis,
     );
     jest.clearAllMocks();
   });
@@ -509,6 +516,11 @@ describe('Route leg geometry', () => {
     }),
   } as unknown as ConfigService<AppConfig, true>;
 
+  const mockRedis = {
+    get: jest.fn().mockResolvedValue(null),
+    set: jest.fn().mockResolvedValue(true),
+  } as unknown as RedisService;
+
   const nodes = new Map([
     [
       'stop-a',
@@ -577,6 +589,7 @@ describe('Route leg geometry', () => {
       mockGraphService,
       mockPrisma,
       mockConfigService,
+      mockRedis,
     );
     const result = await service.searchRoute('stop-a', 'stop-b');
 
@@ -624,6 +637,7 @@ describe('Route leg geometry', () => {
       mockGraphService,
       mockPrisma,
       mockConfigService,
+      mockRedis,
     );
     const result = await service.searchRoute('stop-a', 'stop-b');
 
@@ -667,6 +681,7 @@ describe('Route leg geometry', () => {
       mockGraphService,
       mockPrisma,
       mockConfigService,
+      mockRedis,
     );
     const result = await service.searchRoute('stop-a', 'stop-b');
 
@@ -735,6 +750,7 @@ describe('Route leg geometry', () => {
       mockGraphService,
       mockPrisma,
       mockConfigService,
+      mockRedis,
     );
     const result = await service.searchRoute('stop-a', 'stop-b');
 
@@ -787,6 +803,7 @@ describe('Route leg geometry', () => {
       mockGraphService,
       mockPrisma,
       mockConfigService,
+      mockRedis,
     );
     const result = await service.searchRoute('stop-a', 'stop-b');
 
@@ -831,6 +848,7 @@ describe('Route leg geometry', () => {
       mockGraphService,
       mockPrisma,
       mockConfigService,
+      mockRedis,
     );
     const result = await service.searchRoute('stop-a', 'stop-b');
 
@@ -889,6 +907,7 @@ describe('Route leg geometry', () => {
       mockGraphService,
       mockPrisma,
       mockConfigService,
+      mockRedis,
     );
     const result = await service.searchRoute('stop-a', 'stop-b');
 
@@ -942,6 +961,7 @@ describe('Route leg geometry', () => {
       mockGraphService,
       mockPrisma,
       mockConfigService,
+      mockRedis,
     );
     const result = await service.searchRoute('stop-a', 'stop-b');
 
@@ -989,6 +1009,7 @@ describe('Route leg geometry', () => {
       mockGraphService,
       mockPrisma,
       mockConfigService,
+      mockRedis,
     );
     const result = await service.searchRoute('stop-a', 'stop-b');
 
@@ -1032,6 +1053,7 @@ describe('Route leg geometry', () => {
       mockGraphService,
       mockPrisma,
       mockConfigService,
+      mockRedis,
     );
     const result = await service.searchRoute('stop-a', 'stop-b');
 
@@ -1074,6 +1096,7 @@ describe('Route leg geometry', () => {
       mockGraphService,
       mockPrisma,
       mockConfigService,
+      mockRedis,
     );
     const result = await service.searchRoute('stop-a', 'stop-b');
 
@@ -1082,5 +1105,56 @@ describe('Route leg geometry', () => {
       [106.8203, -6.1675],
       [106.8143, -6.1375],
     ]);
+  });
+
+  it('WALK leg >= 100m returns cached geometry without calling Stadia Maps', async () => {
+    const mockPolyline6 = 'v{lwJwkxvjEg{CfpAozDn}@gzn@ffF';
+
+    mockRedis.get.mockResolvedValueOnce(decodePolyline6(mockPolyline6));
+
+    const fetchSpy = jest.spyOn(global, 'fetch');
+
+    const mockPrisma = {} as unknown as PrismaService;
+    const mockGraphService = {
+      getGraph: jest.fn().mockReturnValue(baseGraph),
+    } as unknown as RoutingGraphService;
+
+    const graph = {
+      ...baseGraph,
+      adjacencyList: new Map([
+        [
+          'stop-a',
+          [
+            {
+              fromStopId: 'stop-a',
+              toStopId: 'stop-b',
+              type: RoutingEdgeType.WALK,
+              walkingTimeSeconds: 300,
+              distanceMeters: 350,
+            },
+          ],
+        ],
+        ['stop-b', []],
+      ]),
+    };
+
+    jest.spyOn(mockGraphService, 'getGraph').mockReturnValue(graph);
+
+    const service = new RoutingSearchService(
+      mockGraphService,
+      mockPrisma,
+      mockConfigService,
+      mockRedis,
+    );
+    const result = await service.searchRoute('stop-a', 'stop-b');
+
+    expect(result.options[0].legs[0].geometry).toEqual(mockPolyline6);
+
+    const stadiaMapsCalls = fetchSpy.mock.calls.filter((call: unknown[]) =>
+      String(call[0]).includes('stadiamaps'),
+    );
+    expect(stadiaMapsCalls).toHaveLength(0);
+
+    fetchSpy.mockRestore();
   });
 });

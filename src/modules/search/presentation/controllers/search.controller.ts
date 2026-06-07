@@ -79,6 +79,7 @@ export class SearchController {
       lat: query.lat,
       lng: query.lng,
       limit: query.limit,
+      lang: query.lang,
     });
   }
 }
