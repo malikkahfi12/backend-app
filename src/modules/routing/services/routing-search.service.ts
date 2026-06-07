@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppConfig } from '../../../config/app.config';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
+import { RedisService } from '../../../infrastructure/redis/redis.service';
 import { RoutingGraphService } from '../graph/routing-graph.service';
 import {
   findEarliestArrivalPath,
@@ -48,6 +49,8 @@ const NAME_CANDIDATE_RADIUS_METERS = 150;
 const MAX_NAME_CANDIDATES = 10;
 const MAX_ROUTE_OPTIONS = 3;
 
+const DIRECTIONS_CACHE_TTL_SECONDS = 86_400;
+
 @Injectable()
 export class RoutingSearchService {
   private readonly logger = new Logger(RoutingSearchService.name);
@@ -58,6 +61,7 @@ export class RoutingSearchService {
     private readonly routingGraphService: RoutingGraphService,
     private readonly prismaService: PrismaService,
     configService: ConfigService<AppConfig, true>,
+    private readonly redis: RedisService,
   ) {
     this.stadiamapsApiKey = configService.get('stadiamaps.apiKey', {
       infer: true,
@@ -413,6 +417,20 @@ export class RoutingSearchService {
       return undefined;
     }
 
+    const cacheKey = `stadiamaps:directions:${fromNode.latitude.toFixed(5)}:${fromNode.longitude.toFixed(5)}:${toNode.latitude.toFixed(5)}:${toNode.longitude.toFixed(5)}`;
+
+    try {
+      const cached = await this.redis.get<number[][]>(cacheKey);
+      if (cached !== null) {
+        this.logger.log('Cache HIT for Stadia Maps walking directions');
+        return cached;
+      }
+    } catch {
+      this.logger.warn(
+        'Redis get failed for directions cache, falling through to API',
+      );
+    }
+
     const url = `${this.stadiamapsBaseUrl}/route/v1?api_key=${encodeURIComponent(this.stadiamapsApiKey)}`;
     const body = JSON.stringify({
       locations: [
@@ -457,6 +475,16 @@ export class RoutingSearchService {
       if (!coordinates.length) {
         this.logger.warn(`Stadia Maps Directions returned invalid geometry`);
         return undefined;
+      }
+
+      try {
+        await this.redis.set(
+          cacheKey,
+          coordinates,
+          DIRECTIONS_CACHE_TTL_SECONDS,
+        );
+      } catch {
+        this.logger.warn(`Redis set failed for directions cache`);
       }
 
       return coordinates;
