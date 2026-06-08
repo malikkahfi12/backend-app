@@ -279,7 +279,7 @@ describe('StadiaMapsGeocodingService', () => {
       expect(mockRedis.set).toHaveBeenCalledWith(
         expect.stringContaining('stadiamaps:geocode:search'),
         expect.any(Array),
-        86400,
+        21600,
       );
     });
 
@@ -305,7 +305,7 @@ describe('StadiaMapsGeocodingService', () => {
       expect(mockRedis.set).toHaveBeenCalledWith(
         expect.stringContaining(':ko'),
         expect.any(Array),
-        86400,
+        21600,
       );
     });
   });

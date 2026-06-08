@@ -1,51 +1,23 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import {
-  IsNumber,
-  IsOptional,
-  IsString,
-  Max,
-  Min,
-  MinLength,
-} from 'class-validator';
-import { IsLatitude, IsLongitude } from '../../../../common/validators';
+import { IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 
-export class SearchPlacesQueryDto {
+export class ExplorePlacesQueryDto {
   @ApiProperty({
-    example: 'Gedung Sate',
-    description: 'Search query text',
+    example: '106.80,-6.25,106.85,-6.20',
+    description: 'Bounding box: minLng,minLat,maxLng,maxLat',
   })
   @IsString()
-  @MinLength(1)
-  q!: string;
+  bbox!: string;
 
   @ApiPropertyOptional({
-    example: -6.902,
-    description: 'Latitude for proximity bias (-90 to 90)',
-  })
-  @IsOptional()
-  @Transform(({ value }) => parseFloat(value as string))
-  @IsNumber()
-  @IsLatitude()
-  lat?: number;
-
-  @ApiPropertyOptional({
-    example: 107.618,
-    description: 'Longitude for proximity bias (-180 to 180)',
-  })
-  @IsOptional()
-  @Transform(({ value }) => parseFloat(value as string))
-  @IsNumber()
-  @IsLongitude()
-  lng?: number;
-
-  @ApiPropertyOptional({
-    example: '106.80,-6.28,106.85,-6.20',
-    description: 'Bounding box to limit search area: minLng,minLat,maxLng,maxLat',
+    example: 'coffee',
+    description:
+      'Place category (food, coffee, shopping, attractions, parks, etc.)',
   })
   @IsOptional()
   @IsString()
-  bbox?: string;
+  category?: string;
 
   @ApiPropertyOptional({
     example: 20,
@@ -59,22 +31,12 @@ export class SearchPlacesQueryDto {
   @Max(50)
   limit?: number = 20;
 
-  @ApiPropertyOptional({
-    example: 'id',
-    description: 'BCP47 language tag for localized results (e.g., id, en, ko)',
-  })
-  @IsOptional()
-  @IsString()
-  lang?: string;
-
   get parsedBbox(): {
     minLng: number;
     minLat: number;
     maxLng: number;
     maxLat: number;
-  } | null {
-    if (!this.bbox) return null;
-
+  } {
     const parts = this.bbox.split(',').map((s) => {
       const n = parseFloat(s.trim());
       if (isNaN(n)) {
