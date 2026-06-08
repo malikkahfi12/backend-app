@@ -1,5 +1,6 @@
 import { RoutingGraph, RoutingGraphEdge } from '../graph/routing-graph.types';
 import { RoutingEdgeType } from '../enums/routing-edge-type.enum';
+import { MinHeap } from '../../../common/utils/min-heap';
 
 export interface DijkstraState {
   stopId: string;
@@ -124,7 +125,9 @@ export function findEarliestArrivalPath(
 
   const visited = new Map<string, number>();
   const previousState = new Map<string, DijkstraState>();
-  const queue: DijkstraState[] = [];
+  const queue = new MinHeap<DijkstraState>(
+    (a, b) => a.arrivalTime - b.arrivalTime,
+  );
 
   const initState: DijkstraState = {
     stopId: fromStopId,
@@ -141,9 +144,8 @@ export function findEarliestArrivalPath(
   const tripIdsSeen = new Set<string>();
   let validTransitEdges = 0;
 
-  while (queue.length > 0) {
-    queue.sort((a, b) => a.arrivalTime - b.arrivalTime);
-    const current = queue.shift()!;
+  while (queue.size > 0) {
+    const current = queue.pop()!;
 
     if (current.arrivalTime > (visited.get(current.stopId) ?? Infinity)) {
       continue;
@@ -466,7 +468,7 @@ export function findTimelessBestPath(
 
   const best = new Map<string, TimelessDijkstraState>();
   const previousState = new Map<string, TimelessDijkstraState>();
-  const queue: TimelessDijkstraState[] = [];
+  const queue = new MinHeap<TimelessDijkstraState>(compareTimelessStates);
 
   const initState: TimelessDijkstraState = {
     stopId: fromStopId,
@@ -486,9 +488,8 @@ export function findTimelessBestPath(
   const tripIdsSeen = new Set<string>();
   let validTransitEdges = 0;
 
-  while (queue.length > 0) {
-    queue.sort(compareTimelessStates);
-    const current = queue.shift()!;
+  while (queue.size > 0) {
+    const current = queue.pop()!;
 
     const currentBest = best.get(current.stopId);
     if (currentBest && compareTimelessStates(current, currentBest) > 0) {
