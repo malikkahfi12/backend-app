@@ -7,6 +7,7 @@ import { DatabaseModule } from '../../infrastructure/database/database.module';
 import { StorageModule } from '../../infrastructure/storage/storage.module';
 import { AuthConfigService } from './auth.config.service';
 import { AuthController } from './auth.controller';
+import { DevAuthController } from './presentation/controllers/dev-auth.controller';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { JwtGlobalGuard } from './guards/jwt-global.guard';
@@ -29,7 +30,7 @@ import { GoogleAuthService } from './services/google-auth.service';
       inject: [ConfigService],
     }),
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, DevAuthController],
   providers: [
     AuthService,
     AuthConfigService,

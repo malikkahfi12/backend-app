@@ -44,6 +44,22 @@ export class TokenService {
     });
   }
 
+  async signAccessTokenWithExpiry(
+    userId: string,
+    deviceId: string,
+    username: string,
+    expiresInSeconds: number,
+  ): Promise<string> {
+    return this.jwtService.signAsync(
+      {
+        sub: userId,
+        deviceId,
+        username,
+      },
+      { expiresIn: expiresInSeconds },
+    );
+  }
+
   async signRecoveryToken(userId: string, purpose: string): Promise<string> {
     return this.jwtService.signAsync(
       { sub: userId, purpose },
