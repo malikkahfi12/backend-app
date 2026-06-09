@@ -863,6 +863,97 @@ export class AuthService implements OnModuleInit {
     };
   }
 
+  async createDevSession(
+    username: string,
+    displayName?: string,
+  ): Promise<{
+    data: {
+      user: {
+        id: string;
+        username: string;
+        displayName: string;
+        avatarUrl: string | null;
+        avatarInitials: string;
+        isActive: boolean;
+        createdAt: string;
+      };
+      accessToken: string;
+      refreshToken: string;
+    };
+    meta: {
+      accessTokenExpiresIn: number;
+      refreshTokenExpiresAt: string;
+    };
+  }> {
+    const DEVI_SECONDS = 100 * 365 * 86400;
+
+    const name = displayName ?? username;
+
+    const user = await this.prismaService.user.upsert({
+      where: { username },
+      update: { displayName: name, isActive: true },
+      create: { username, displayName: name, isActive: true },
+    });
+
+    const dummyPublicKey = randomBytes(32).toString('base64url');
+
+    const device = await this.prismaService.userDevice.create({
+      data: {
+        userId: user.id,
+        publicKey: dummyPublicKey,
+        deviceName: 'dev-session',
+        platform: 'web',
+        lastSeenAt: new Date(),
+      },
+    });
+
+    const accessToken = await this.tokenService.signAccessTokenWithExpiry(
+      user.id,
+      device.id,
+      user.username,
+      DEVI_SECONDS,
+    );
+
+    const expiresAt = new Date(Date.now() + DEVI_SECONDS * 1000);
+
+    const refreshRecord = await this.prismaService.refreshToken.create({
+      data: {
+        userId: user.id,
+        deviceId: device.id,
+        tokenHash: '',
+        expiresAt,
+      },
+    });
+
+    const { rawToken, tokenHash } =
+      await this.tokenService.generateRefreshToken(refreshRecord.id);
+
+    await this.prismaService.refreshToken.update({
+      where: { id: refreshRecord.id },
+      data: { tokenHash },
+    });
+
+    return {
+      data: {
+        user: {
+          id: user.id,
+          username: user.username,
+          displayName: user.displayName,
+          avatarUrl: user.avatarUrl,
+          avatarInitials: this.computeInitials(user.displayName),
+          isActive: user.isActive,
+          createdAt: user.createdAt.toISOString(),
+        },
+        accessToken,
+        refreshToken: rawToken,
+      },
+      meta: {
+        accessTokenExpiresIn: DEVI_SECONDS,
+        refreshTokenExpiresAt: expiresAt.toISOString(),
+      },
+    };
+  }
+
   async cleanupExpiredRecords(): Promise<{
     challenges: number;
     refreshTokens: number;
