@@ -201,6 +201,7 @@ describe('StadiaMapsGeocodingService', () => {
       expect(url).toContain('boundary.rect.max_lon=107.8');
       expect(url).toContain('boundary.rect.min_lat=-7.2');
       expect(url).toContain('boundary.rect.max_lat=-5.2');
+      expect(url).toContain('layers=poi%2Caddress%2Clocality');
     });
 
     it('should not include focus/boundary when lat/lng omitted', async () => {
@@ -209,6 +210,69 @@ describe('StadiaMapsGeocodingService', () => {
       const url = mockFetch.mock.calls[0][0] as string;
       expect(url).not.toContain('focus.point');
       expect(url).not.toContain('boundary.rect');
+    });
+
+    it('should use explicit bbox when provided instead of auto-generation', async () => {
+      await service.search('test', {
+        lat: -6.2,
+        lng: 106.8,
+        bbox: { minLng: 106.75, minLat: -6.25, maxLng: 106.85, maxLat: -6.15 },
+      });
+
+      const url = mockFetch.mock.calls[0][0] as string;
+      expect(url).toContain('focus.point.lon=106.8');
+      expect(url).toContain('focus.point.lat=-6.2');
+      expect(url).toContain('boundary.rect.min_lon=106.75');
+      expect(url).toContain('boundary.rect.max_lon=106.85');
+      expect(url).toContain('boundary.rect.min_lat=-6.25');
+      expect(url).toContain('boundary.rect.max_lat=-6.15');
+    });
+
+    it('should use custom layers when provided', async () => {
+      await service.search('test', { layers: 'poi,locality' });
+
+      const url = mockFetch.mock.calls[0][0] as string;
+      expect(url).toContain('layers=poi%2Clocality');
+      expect(url).not.toContain('layers=poi%2Caddress%2Clocality');
+    });
+
+    it('should use explicit bbox even without lat/lng', async () => {
+      await service.search('test', {
+        bbox: { minLng: 106.75, minLat: -6.25, maxLng: 106.85, maxLat: -6.15 },
+      });
+
+      const url = mockFetch.mock.calls[0][0] as string;
+      expect(url).not.toContain('focus.point');
+      expect(url).toContain('boundary.rect.min_lon=106.75');
+      expect(url).toContain('boundary.rect.max_lon=106.85');
+      expect(url).toContain('boundary.rect.min_lat=-6.25');
+      expect(url).toContain('boundary.rect.max_lat=-6.15');
+    });
+
+    it('should include bbox in cache key when provided', async () => {
+      mockRedis.get.mockResolvedValueOnce(null);
+
+      await service.search('test', {
+        bbox: { minLng: 106.75, minLat: -6.25, maxLng: 106.85, maxLat: -6.15 },
+      });
+
+      expect(mockRedis.set).toHaveBeenCalledWith(
+        expect.stringContaining(':bbox:106.750,-6.250,106.850,-6.150'),
+        expect.any(Array),
+        21600,
+      );
+    });
+
+    it('should include layers in cache key when provided', async () => {
+      mockRedis.get.mockResolvedValueOnce(null);
+
+      await service.search('test', { layers: 'poi,address' });
+
+      expect(mockRedis.set).toHaveBeenCalledWith(
+        expect.stringContaining(':layers:poi,address'),
+        expect.any(Array),
+        21600,
+      );
     });
 
     it('should use fallback name when property name is missing', async () => {
@@ -233,13 +297,14 @@ describe('StadiaMapsGeocodingService', () => {
       expect(results[0].name).toBe('Unknown');
     });
 
-    it('should use Stadia Maps v1 search endpoint with api_key', async () => {
+    it('should use Stadia Maps v2 search endpoint with api_key', async () => {
       await service.search('test');
 
       const url = mockFetch.mock.calls[0][0] as string;
-      expect(url).toContain('/geocoding/v1/search');
+      expect(url).toContain('/geocoding/v2/search');
       expect(url).toContain('text=test');
       expect(url).toContain('api_key=test-api-key');
+      expect(url).toContain('layers=poi%2Caddress%2Clocality');
     });
 
     it('should return cached result without calling API on search cache hit', async () => {

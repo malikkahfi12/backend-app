@@ -83,7 +83,8 @@ export class PlacesController {
 
   @Get('detail')
   @ApiOkResponse({
-    description: 'Get place detail by Stadia Maps GID with nearest transit stop enrichment.',
+    description:
+      'Get place detail by Stadia Maps GID with nearest transit stop enrichment.',
     type: PlaceDetailResponseDto,
   })
   async detail(

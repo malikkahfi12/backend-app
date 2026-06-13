@@ -51,10 +51,16 @@ export class MinHeap<T> {
       const right = left + 1;
       let smallest = index;
 
-      if (left < length && this.compare(this.heap[left], this.heap[smallest]) < 0) {
+      if (
+        left < length &&
+        this.compare(this.heap[left], this.heap[smallest]) < 0
+      ) {
         smallest = left;
       }
-      if (right < length && this.compare(this.heap[right], this.heap[smallest]) < 0) {
+      if (
+        right < length &&
+        this.compare(this.heap[right], this.heap[smallest]) < 0
+      ) {
         smallest = right;
       }
       if (smallest === index) break;

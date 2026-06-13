@@ -80,6 +80,8 @@ export class SearchController {
       lng: query.lng,
       limit: query.limit,
       lang: query.lang,
+      bbox: query.parsedBbox ?? undefined,
+      layers: query.layers,
     });
   }
 }

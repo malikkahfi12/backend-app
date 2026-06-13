@@ -13,10 +13,13 @@ export class DevAuthController {
 
   @Post('dev-login')
   @ApiCreatedResponse({
-    description: 'Dev account login - access token & refresh token tanpa kadaluarsa (100 tahun).',
+    description:
+      'Dev account login - access token & refresh token tanpa kadaluarsa (100 tahun).',
     type: DevLoginResponseDto,
   })
-  async devLogin(@Body() dto: DevLoginRequestDto): Promise<DevLoginResponseDto> {
+  async devLogin(
+    @Body() dto: DevLoginRequestDto,
+  ): Promise<DevLoginResponseDto> {
     return this.authService.createDevSession(dto.username, dto.displayName);
   }
 }
