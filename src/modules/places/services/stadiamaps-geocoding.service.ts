@@ -95,7 +95,14 @@ export class StadiaMapsGeocodingService {
 
   async search(
     query: string,
-    opts?: { lat?: number; lng?: number; limit?: number; lang?: string },
+    opts?: {
+      lat?: number;
+      lng?: number;
+      limit?: number;
+      lang?: string;
+      bbox?: ExploreBBox;
+      layers?: string;
+    },
   ): Promise<NormalizedPlaceResult[]> {
     const limit = opts?.limit ?? 5;
     const fetchLimit = limit + 2;
@@ -105,6 +112,9 @@ export class StadiaMapsGeocodingService {
       size: String(fetchLimit),
     });
 
+    const layers = opts?.layers ?? 'poi,address,locality';
+    params.set('layers', layers);
+
     if (opts?.lang) {
       params.set('lang', opts.lang);
     }
@@ -112,7 +122,14 @@ export class StadiaMapsGeocodingService {
     if (opts?.lng !== undefined && opts?.lat !== undefined) {
       params.set('focus.point.lon', String(opts.lng));
       params.set('focus.point.lat', String(opts.lat));
+    }
 
+    if (opts?.bbox) {
+      params.set('boundary.rect.min_lon', String(opts.bbox.minLng));
+      params.set('boundary.rect.max_lon', String(opts.bbox.maxLng));
+      params.set('boundary.rect.min_lat', String(opts.bbox.minLat));
+      params.set('boundary.rect.max_lat', String(opts.bbox.maxLat));
+    } else if (opts?.lng !== undefined && opts?.lat !== undefined) {
       const minLng = opts.lng - REGIONAL_BBOX_DEGREES;
       const minLat = opts.lat - REGIONAL_BBOX_DEGREES;
       const maxLng = opts.lng + REGIONAL_BBOX_DEGREES;
@@ -123,7 +140,11 @@ export class StadiaMapsGeocodingService {
       params.set('boundary.rect.max_lat', String(maxLat));
     }
 
-    const cacheKey = `stadiamaps:geocode:search:${query.trim().toLowerCase()}:${(opts?.lat ?? 0).toFixed(3)}:${(opts?.lng ?? 0).toFixed(3)}:${limit}:${opts?.lang ?? ''}`;
+    const bboxHash = opts?.bbox
+      ? `:bbox:${opts.bbox.minLng.toFixed(3)},${opts.bbox.minLat.toFixed(3)},${opts.bbox.maxLng.toFixed(3)},${opts.bbox.maxLat.toFixed(3)}`
+      : '';
+    const layersHash = `:layers:${layers}`;
+    const cacheKey = `stadiamaps:geocode:search:${query.trim().toLowerCase()}:${(opts?.lat ?? 0).toFixed(3)}:${(opts?.lng ?? 0).toFixed(3)}:${limit}:${opts?.lang ?? ''}${bboxHash}${layersHash}`;
 
     try {
       const cached = await this.redis.get<NormalizedPlaceResult[]>(cacheKey);
@@ -137,7 +158,7 @@ export class StadiaMapsGeocodingService {
       );
     }
 
-    const url = `${this.baseUrl}/geocoding/v1/search?${params.toString()}`;
+    const url = `${this.baseUrl}/geocoding/v2/search?${params.toString()}`;
 
     this.logger.log(`Geocoding search: "${query}" (limit=${limit})`);
 

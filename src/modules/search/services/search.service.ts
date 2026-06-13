@@ -1,6 +1,7 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { StopService } from '../../transit/core/stops/application/services/stop.service';
 import { PlacesService } from '../../places/services/places.service';
+import type { ExploreBBox } from '../../places/services/stadiamaps-geocoding.service';
 import type { StopEntity } from '../../transit/core/stops/domain/entities/stop.entity';
 
 export interface UnifiedStopResult {
@@ -43,7 +44,14 @@ export class SearchService {
 
   async aggregate(
     query: string,
-    opts?: { lat?: number; lng?: number; limit?: number; lang?: string },
+    opts?: {
+      lat?: number;
+      lng?: number;
+      limit?: number;
+      lang?: string;
+      bbox?: ExploreBBox;
+      layers?: string;
+    },
   ): Promise<UnifiedSearchResponse> {
     const limit = opts?.limit ?? 5;
 
@@ -54,6 +62,8 @@ export class SearchService {
         lng: opts?.lng,
         limit,
         lang: opts?.lang,
+        bbox: opts?.bbox,
+        layers: opts?.layers,
       }),
     ]);
 

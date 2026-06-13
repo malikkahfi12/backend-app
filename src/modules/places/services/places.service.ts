@@ -30,7 +30,14 @@ export class PlacesService {
 
   async search(
     query: string,
-    opts?: { lat?: number; lng?: number; limit?: number; lang?: string },
+    opts?: {
+      lat?: number;
+      lng?: number;
+      limit?: number;
+      lang?: string;
+      bbox?: ExploreBBox;
+      layers?: string;
+    },
   ): Promise<NormalizedPlaceResult[]> {
     return this.geocodingService.search(query, opts);
   }

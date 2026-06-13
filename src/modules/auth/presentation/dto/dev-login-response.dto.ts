@@ -35,10 +35,16 @@ export class DevLoginDataDto {
 }
 
 export class DevLoginMetaDto {
-  @ApiProperty({ example: 3153600000, description: 'Access token expiry dalam detik (100 tahun)' })
+  @ApiProperty({
+    example: 3153600000,
+    description: 'Access token expiry dalam detik (100 tahun)',
+  })
   accessTokenExpiresIn!: number;
 
-  @ApiProperty({ example: '2126-06-08T12:00:00.000Z', description: 'Refresh token kadaluarsa (100 tahun)' })
+  @ApiProperty({
+    example: '2126-06-08T12:00:00.000Z',
+    description: 'Refresh token kadaluarsa (100 tahun)',
+  })
   refreshTokenExpiresAt!: string;
 }
 

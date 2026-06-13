@@ -149,16 +149,24 @@ describe('SearchService', () => {
       expect(result.meta.stopCount).toBe(2);
     });
 
-    it('should pass lat/lng proximity to places search', async () => {
+    it('should pass lat/lng/bbox/layers to places search', async () => {
       mockStopService.findAll.mockResolvedValue([]);
       mockPlacesService.search.mockResolvedValue([]);
 
-      await service.aggregate('bandung', { lat: -6.2, lng: 106.8, limit: 5 });
+      await service.aggregate('bandung', {
+        lat: -6.2,
+        lng: 106.8,
+        limit: 5,
+        bbox: { minLng: 106.75, minLat: -6.25, maxLng: 106.85, maxLat: -6.15 },
+        layers: 'poi,address',
+      });
 
       expect(mockPlacesService.search).toHaveBeenCalledWith('bandung', {
         lat: -6.2,
         lng: 106.8,
         limit: 5,
+        bbox: { minLng: 106.75, minLat: -6.25, maxLng: 106.85, maxLat: -6.15 },
+        layers: 'poi,address',
       });
     });
   });

@@ -41,7 +41,8 @@ export class SearchPlacesQueryDto {
 
   @ApiPropertyOptional({
     example: '106.80,-6.28,106.85,-6.20',
-    description: 'Bounding box to limit search area: minLng,minLat,maxLng,maxLat',
+    description:
+      'Bounding box to limit search area: minLng,minLat,maxLng,maxLat',
   })
   @IsOptional()
   @IsString()
