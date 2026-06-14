@@ -19,4 +19,12 @@ export class RoutingResponseDto {
 
   @ApiProperty({ type: [RouteOptionDto] })
   options!: RouteOptionDto[];
+
+  @ApiPropertyOptional({
+    description: 'Advisories about the routing result',
+    example: [
+      'No routes with same-station transfers found. Showing best available routes with walking transfers.',
+    ],
+  })
+  warnings?: string[];
 }

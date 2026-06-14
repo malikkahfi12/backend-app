@@ -1,6 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 import { Transform } from 'class-transformer';
+
+export enum TransferPreference {
+  ANY = 'any',
+  DIRECT = 'direct',
+}
 
 export class RoutingRequestDto {
   @ApiProperty({
@@ -35,4 +40,14 @@ export class RoutingRequestDto {
   @IsNumber()
   @Min(0)
   departureTimeSeconds?: number;
+
+  @ApiPropertyOptional({
+    enum: TransferPreference,
+    default: TransferPreference.ANY,
+    description:
+      'Transfer preference: "any" (default) or "direct" (prefer same-station transfers)',
+  })
+  @IsOptional()
+  @IsEnum(TransferPreference)
+  transferPreference?: TransferPreference;
 }

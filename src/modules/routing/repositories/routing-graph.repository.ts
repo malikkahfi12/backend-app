@@ -7,6 +7,7 @@ export interface StopRow {
   name: string;
   latitude: number;
   longitude: number;
+  parent_station_id: string | null;
 }
 
 export interface NearbyPairRow {
@@ -34,7 +35,7 @@ export class RoutingGraphRepository {
   async findGraphStops(): Promise<StopRow[]> {
     return await this.prismaService.$queryRaw(
       Prisma.sql`
-        SELECT id, name, latitude, longitude
+        SELECT id, name, latitude, longitude, parent_station_id
         FROM gtfs_stops
         WHERE is_active = true AND latitude IS NOT NULL AND longitude IS NOT NULL
       `,

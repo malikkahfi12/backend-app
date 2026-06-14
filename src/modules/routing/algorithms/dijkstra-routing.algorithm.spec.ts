@@ -2,6 +2,8 @@ import {
   findEarliestArrivalPath,
   findTimelessBestPath,
   findTimelessBestPaths,
+  TIMELESS_ROUTING_PROFILES,
+  TimelessRoutingProfile,
 } from './dijkstra-routing.algorithm';
 import { RoutingGraph, RoutingGraphEdge } from '../graph/routing-graph.types';
 import { RoutingEdgeType } from '../enums/routing-edge-type.enum';
@@ -523,5 +525,190 @@ describe('findEarliestArrivalPath', () => {
     for (const leg of direct!.path!.legs) {
       expect(leg.routeId).toBe('route-direct');
     }
+  });
+
+  it('uses TRANSFER edges for same-station movement with zero cost and zero duration', () => {
+    const graph = makeGraph(
+      [
+        { id: 'a', name: 'A', lat: -6.2, lng: 106.8 },
+        { id: 'b', name: 'B', lat: -6.21, lng: 106.81 },
+        { id: 'b-platform', name: 'B Platform', lat: -6.21, lng: 106.81 },
+        { id: 'c', name: 'C', lat: -6.22, lng: 106.82 },
+      ],
+      [
+        {
+          fromStopId: 'a',
+          toStopId: 'b',
+          type: RoutingEdgeType.TRANSIT,
+          tripId: 'trip-1',
+          routeId: 'route-1',
+          travelTimeSeconds: 100,
+        },
+        {
+          fromStopId: 'b',
+          toStopId: 'b-platform',
+          type: RoutingEdgeType.TRANSFER,
+          distanceMeters: 0,
+          walkingTimeSeconds: 0,
+        },
+        {
+          fromStopId: 'b-platform',
+          toStopId: 'c',
+          type: RoutingEdgeType.TRANSIT,
+          tripId: 'trip-2',
+          routeId: 'route-2',
+          travelTimeSeconds: 100,
+        },
+      ],
+    );
+
+    const result = findTimelessBestPath(graph, 'a', 'c');
+
+    expect(result.path).not.toBeNull();
+    const transferLeg = result.path!.legs.find(
+      (l) => l.type === RoutingEdgeType.TRANSFER,
+    );
+    expect(transferLeg).toBeDefined();
+    expect(transferLeg!.durationSeconds).toBe(0);
+    expect(result.path!.walkingDurationSeconds).toBe(0);
+  });
+
+  it('LESS_WALKING profile prefers same-station TRANSFER over walking transfer', () => {
+    const graph = makeGraph(
+      [
+        { id: 'a', name: 'A', lat: -6.2, lng: 106.8 },
+        { id: 'b-station', name: 'B Station', lat: -6.21, lng: 106.81 },
+        { id: 'b-walk', name: 'B Walk', lat: -6.215, lng: 106.815 },
+        { id: 'c', name: 'C', lat: -6.22, lng: 106.82 },
+      ],
+      [
+        {
+          fromStopId: 'a',
+          toStopId: 'b-station',
+          type: RoutingEdgeType.TRANSIT,
+          tripId: 'trip-1',
+          routeId: 'route-1',
+          travelTimeSeconds: 100,
+        },
+        {
+          fromStopId: 'b-station',
+          toStopId: 'b-walk',
+          type: RoutingEdgeType.TRANSFER,
+          distanceMeters: 0,
+          walkingTimeSeconds: 0,
+        },
+        {
+          fromStopId: 'b-walk',
+          toStopId: 'c',
+          type: RoutingEdgeType.TRANSIT,
+          tripId: 'trip-2',
+          routeId: 'route-2',
+          travelTimeSeconds: 100,
+        },
+        {
+          fromStopId: 'b-station',
+          toStopId: 'c',
+          type: RoutingEdgeType.WALK,
+          distanceMeters: 300,
+          walkingTimeSeconds: 250,
+        },
+      ],
+    );
+
+    const lessWalkingProfile = TIMELESS_ROUTING_PROFILES.find(
+      (p) => p.strategy === 'LESS_WALKING',
+    )!;
+
+    const result = findTimelessBestPath(graph, 'a', 'c', lessWalkingProfile);
+
+    expect(result.path).not.toBeNull();
+    expect(result.path!.walkingDurationSeconds).toBe(0);
+    expect(
+      result.path!.legs.some((l) => l.type === RoutingEdgeType.TRANSFER),
+    ).toBe(true);
+  });
+
+  it('LESS_WALKING profile has transferWalkingPenaltySeconds set', () => {
+    const profile = TIMELESS_ROUTING_PROFILES.find(
+      (p) => p.strategy === 'LESS_WALKING',
+    )!;
+    expect(profile.transferWalkingPenaltySeconds).toBe(7200);
+  });
+
+  it('handles TRANSFER edges in scheduled routing with zero time', () => {
+    const graph = makeGraph(
+      [
+        { id: 'a', name: 'A', lat: -6.2, lng: 106.8 },
+        { id: 'b-p1', name: 'B Platform 1', lat: -6.21, lng: 106.81 },
+        { id: 'b-p2', name: 'B Platform 2', lat: -6.21, lng: 106.81 },
+        { id: 'c', name: 'C', lat: -6.22, lng: 106.82 },
+      ],
+      [
+        {
+          fromStopId: 'a',
+          toStopId: 'b-p1',
+          type: RoutingEdgeType.TRANSIT,
+          tripId: 'trip-1',
+          routeId: 'route-1',
+          departureTimeSeconds: 10000,
+          arrivalTimeSeconds: 10100,
+          travelTimeSeconds: 100,
+        },
+        {
+          fromStopId: 'b-p1',
+          toStopId: 'b-p2',
+          type: RoutingEdgeType.TRANSFER,
+          distanceMeters: 0,
+          walkingTimeSeconds: 0,
+        },
+        {
+          fromStopId: 'b-p2',
+          toStopId: 'c',
+          type: RoutingEdgeType.TRANSIT,
+          tripId: 'trip-2',
+          routeId: 'route-2',
+          departureTimeSeconds: 10200,
+          arrivalTimeSeconds: 10300,
+          travelTimeSeconds: 100,
+        },
+      ],
+    );
+
+    const result = findEarliestArrivalPath(graph, 'a', 'c', 5000);
+
+    expect(result.path).not.toBeNull();
+    expect(result.path!.walkingDurationSeconds).toBe(0);
+  });
+
+  it('accepts custom profiles in findTimelessBestPaths', () => {
+    const graph = makeGraph(
+      [
+        { id: 'a', name: 'A', lat: -6.2, lng: 106.8 },
+        { id: 'b', name: 'B', lat: -6.21, lng: 106.81 },
+      ],
+      [
+        {
+          fromStopId: 'a',
+          toStopId: 'b',
+          type: RoutingEdgeType.TRANSIT,
+          tripId: 'trip-1',
+          routeId: 'route-1',
+          travelTimeSeconds: 100,
+        },
+      ],
+    );
+
+    const customProfile: TimelessRoutingProfile = {
+      strategy: 'FASTEST',
+      walkingPenaltyMultiplier: 0,
+      routeChangePenaltySeconds: 0,
+      sameRouteWalkPenaltySeconds: 0,
+      transferWalkingPenaltySeconds: 0,
+    };
+
+    const results = findTimelessBestPaths(graph, 'a', 'b', 3, [customProfile]);
+    const paths = results.map((r) => r.path).filter(Boolean);
+    expect(paths).toHaveLength(1);
+    expect(paths[0]!.strategy).toBe('FASTEST');
   });
 });

@@ -83,6 +83,7 @@ export class RoutingController {
               query.fromStopId,
               query.toStopId,
               query.departureTimeSeconds,
+              query.transferPreference,
             )
           : await this.routingSearchService.searchRouteByInputs(query),
       meta: this.routingGraphService.getGraphMetadata(),

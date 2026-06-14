@@ -9,8 +9,10 @@ import {
   findTimelessBestPaths,
   PathResult,
   RouteLeg,
+  TIMELESS_ROUTING_PROFILES,
 } from '../algorithms/dijkstra-routing.algorithm';
 import { RoutingResponseDto } from '../dto/routing-response.dto';
+import { TransferPreference } from '../dto/routing-request.dto';
 import { RouteOptionDto } from '../dto/route-option.dto';
 import { RouteLegDto } from '../dto/route-leg.dto';
 import { RoutingGraph, RoutingGraphNode } from '../graph/routing-graph.types';
@@ -18,6 +20,7 @@ import { RoutingEdgeType } from '../enums/routing-edge-type.enum';
 import {
   WALK_GEOMETRY_STADIAMAPS_MIN_DISTANCE_METERS,
   STADIAMAPS_DIRECTIONS_TIMEOUT_MS,
+  DIRECT_TRANSFER_WARNING,
 } from '../constants/routing.constants';
 import {
   encodePolyline6,
@@ -43,6 +46,7 @@ interface RouteSearchInputs {
   toStopId?: string;
   toStopName?: string;
   departureTimeSeconds?: number;
+  transferPreference?: TransferPreference;
 }
 
 const NAME_CANDIDATE_RADIUS_METERS = 150;
@@ -75,6 +79,7 @@ export class RoutingSearchService {
     fromStopId: string,
     toStopId: string,
     departureTimeSeconds?: number,
+    transferPreference?: TransferPreference,
   ): Promise<RoutingResponseDto> {
     const response: RoutingResponseDto = {
       fromStopId,
@@ -103,6 +108,7 @@ export class RoutingSearchService {
       fromStopId,
       toStopId,
       departureTimeSeconds,
+      transferPreference,
     );
 
     const result = results[0];
@@ -122,6 +128,8 @@ export class RoutingSearchService {
     }
 
     response.options.sort(sortOptionsByQuality);
+
+    this.addWarnings(response, transferPreference);
 
     await this.populateLegGeometries(response, graph);
 
@@ -168,6 +176,7 @@ export class RoutingSearchService {
           fromCandidate.stopId,
           toCandidate.stopId,
           inputs.departureTimeSeconds,
+          inputs.transferPreference,
         );
 
         if (response.options.length === 0) continue;
@@ -190,6 +199,7 @@ export class RoutingSearchService {
         fromCandidate.stopId,
         toCandidate.stopId,
         inputs.departureTimeSeconds,
+        inputs.transferPreference,
       );
     }
 
@@ -250,7 +260,7 @@ export class RoutingSearchService {
   }
 
   private toRouteLeg(leg: RouteLeg, graph: RoutingGraph): RouteLegDto {
-    return {
+    const dto: RouteLegDto = {
       type: leg.type,
       fromStopId: leg.fromStopId,
       toStopId: leg.toStopId,
@@ -272,6 +282,34 @@ export class RoutingSearchService {
       routeId: leg.routeId ?? null,
       routeName: leg.routeName ?? null,
     };
+
+    if (leg.type === RoutingEdgeType.TRANSIT && leg.routeId) {
+      const edges = graph.adjacencyList.get(leg.fromStopId) ?? [];
+      const seenRoutes = new Set<string>();
+
+      dto.alternativeRoutes = [];
+
+      for (const edge of edges) {
+        if (
+          edge.type !== RoutingEdgeType.TRANSIT ||
+          edge.toStopId !== leg.toStopId ||
+          !edge.routeId ||
+          edge.routeId === leg.routeId
+        ) {
+          continue;
+        }
+
+        if (seenRoutes.has(edge.routeId)) continue;
+        seenRoutes.add(edge.routeId);
+
+        dto.alternativeRoutes.push({
+          routeId: edge.routeId,
+          routeName: edge.routeName ?? undefined,
+        });
+      }
+    }
+
+    return dto;
   }
 
   private async populateLegGeometries(
@@ -590,6 +628,7 @@ export class RoutingSearchService {
     fromStopId: string,
     toStopId: string,
     departureTimeSeconds?: number,
+    transferPreference?: TransferPreference,
   ): Promise<RoutingResponseDto> {
     const response: RoutingResponseDto = {
       fromStopId,
@@ -607,6 +646,7 @@ export class RoutingSearchService {
       fromStopId,
       toStopId,
       departureTimeSeconds,
+      transferPreference,
     );
 
     for (const item of results) {
@@ -626,6 +666,8 @@ export class RoutingSearchService {
 
     response.options.sort(sortOptionsByQuality);
 
+    this.addWarnings(response, transferPreference);
+
     await this.populateLegGeometries(response, graph);
 
     return response;
@@ -636,17 +678,60 @@ export class RoutingSearchService {
     fromStopId: string,
     toStopId: string,
     departureTimeSeconds?: number,
+    transferPreference?: TransferPreference,
   ) {
-    return departureTimeSeconds === undefined
-      ? findTimelessBestPaths(graph, fromStopId, toStopId, MAX_ROUTE_OPTIONS)
-      : [
-          findEarliestArrivalPath(
-            graph,
-            fromStopId,
-            toStopId,
-            departureTimeSeconds,
-          ),
-        ];
+    if (departureTimeSeconds !== undefined) {
+      return [
+        findEarliestArrivalPath(
+          graph,
+          fromStopId,
+          toStopId,
+          departureTimeSeconds,
+        ),
+      ];
+    }
+
+    if (transferPreference === TransferPreference.DIRECT) {
+      const directProfile = TIMELESS_ROUTING_PROFILES.find(
+        (p) => p.strategy === 'LESS_WALKING',
+      );
+      const profiles = directProfile
+        ? [
+            directProfile,
+            ...TIMELESS_ROUTING_PROFILES.filter((p) => p !== directProfile),
+          ]
+        : TIMELESS_ROUTING_PROFILES;
+      return findTimelessBestPaths(
+        graph,
+        fromStopId,
+        toStopId,
+        MAX_ROUTE_OPTIONS,
+        profiles,
+      );
+    }
+
+    return findTimelessBestPaths(
+      graph,
+      fromStopId,
+      toStopId,
+      MAX_ROUTE_OPTIONS,
+    );
+  }
+
+  private addWarnings(
+    response: RoutingResponseDto,
+    transferPreference?: TransferPreference,
+  ): void {
+    if (transferPreference !== TransferPreference.DIRECT) return;
+    if (response.options.length === 0) return;
+
+    const allWalkingTransfers = response.options.every((opt) =>
+      hasWalkingTransfer(opt),
+    );
+
+    if (allWalkingTransfers) {
+      response.warnings = [DIRECT_TRANSFER_WARNING];
+    }
   }
 
   private resolveInputCandidates(
@@ -731,6 +816,21 @@ export class RoutingSearchService {
       a.toStopId.localeCompare(b.toStopId)
     );
   }
+}
+
+function hasWalkingTransfer(option: RouteOptionDto): boolean {
+  for (let i = 1; i < option.legs.length; i++) {
+    const prevLeg = option.legs[i - 1];
+    const leg = option.legs[i];
+    if (
+      prevLeg.type === RoutingEdgeType.TRANSIT &&
+      leg.type === RoutingEdgeType.WALK &&
+      (leg.distanceMeters ?? 0) > 0
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function addCandidate(

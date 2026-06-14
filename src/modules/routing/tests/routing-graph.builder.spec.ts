@@ -20,8 +20,8 @@ describe('RoutingGraphBuilder', () => {
   describe('buildGraph', () => {
     it('builds nodes from stops', async () => {
       mockRepository.findGraphStops = jest.fn().mockResolvedValue([
-        { id: 'stop-1', name: 'Stop A', latitude: -6.2, longitude: 106.8 },
-        { id: 'stop-2', name: 'Stop B', latitude: -6.21, longitude: 106.81 },
+        { id: 'stop-1', name: 'Stop A', latitude: -6.2, longitude: 106.8, parent_station_id: null },
+        { id: 'stop-2', name: 'Stop B', latitude: -6.21, longitude: 106.81, parent_station_id: null },
       ]);
       mockRepository.findNearbyStopPairs = jest.fn().mockResolvedValue([]);
       mockRepository.findTransitEdgeRows = jest.fn().mockResolvedValue([]);
@@ -201,6 +201,41 @@ describe('RoutingGraphBuilder', () => {
       expect(graph.summary.transitEdgeCount).toBe(1);
       expect(graph.summary.transferEdgeCount).toBe(0);
       expect(graph.summary.totalEdgeCount).toBe(3);
+    });
+
+    it('builds TRANSFER edges for stops sharing the same parent station', async () => {
+      mockRepository.findGraphStops = jest.fn().mockResolvedValue([
+        { id: 'stop-1', name: 'Station A Platform 1', latitude: -6.2, longitude: 106.8, parent_station_id: 'station-a' },
+        { id: 'stop-2', name: 'Station A Platform 2', latitude: -6.2, longitude: 106.8, parent_station_id: 'station-a' },
+        { id: 'stop-3', name: 'Station B', latitude: -6.21, longitude: 106.81, parent_station_id: 'station-b' },
+      ]);
+      mockRepository.findNearbyStopPairs = jest.fn().mockResolvedValue([]);
+      mockRepository.findTransitEdgeRows = jest.fn().mockResolvedValue([]);
+
+      const graph = await builder.buildGraph();
+
+      expect(graph.summary.transferEdgeCount).toBe(2);
+      const edges1 = graph.adjacencyList.get('stop-1')!;
+      const transferEdge = edges1.find(
+        (e) => e.type === RoutingEdgeType.TRANSFER,
+      );
+      expect(transferEdge).toBeDefined();
+      expect(transferEdge!.toStopId).toBe('stop-2');
+      expect(transferEdge!.distanceMeters).toBe(0);
+      expect(transferEdge!.walkingTimeSeconds).toBe(0);
+    });
+
+    it('does not build TRANSFER edges for stops without parent stations', async () => {
+      mockRepository.findGraphStops = jest.fn().mockResolvedValue([
+        { id: 'stop-1', name: 'Stop A', latitude: -6.2, longitude: 106.8, parent_station_id: null },
+        { id: 'stop-2', name: 'Stop B', latitude: -6.21, longitude: 106.81, parent_station_id: null },
+      ]);
+      mockRepository.findNearbyStopPairs = jest.fn().mockResolvedValue([]);
+      mockRepository.findTransitEdgeRows = jest.fn().mockResolvedValue([]);
+
+      const graph = await builder.buildGraph();
+
+      expect(graph.summary.transferEdgeCount).toBe(0);
     });
   });
 });

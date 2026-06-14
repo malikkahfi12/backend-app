@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { RoutingEdgeType } from '../enums/routing-edge-type.enum';
+import { RouteAlternativeDto } from './route-alternative.dto';
 
 export class RouteLegDto {
   @ApiProperty({ enum: RoutingEdgeType, example: RoutingEdgeType.WALK })
@@ -64,4 +65,11 @@ export class RouteLegDto {
     example: 'v{lwJwkxvjEg{CfpAozDn}@gzn@ffF',
   })
   geometry?: string;
+
+  @ApiPropertyOptional({
+    type: [RouteAlternativeDto],
+    description:
+      'Other routes serving the same stop-to-stop transit segment',
+  })
+  alternativeRoutes?: RouteAlternativeDto[];
 }
