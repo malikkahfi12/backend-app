@@ -1,6 +1,6 @@
 import { RoutingEdgeType } from '../enums/routing-edge-type.enum';
 
-export const ROUTING_GRAPH_SCHEMA_VERSION = 2;
+export const ROUTING_GRAPH_SCHEMA_VERSION = 3;
 
 export type RoutingGraphSource = 'db' | 'redis' | 'unknown';
 
@@ -16,6 +16,7 @@ export interface RoutingGraphNode {
   name: string;
   latitude: number;
   longitude: number;
+  parentStationId?: string | null;
 }
 
 export interface RoutingGraphEdge {

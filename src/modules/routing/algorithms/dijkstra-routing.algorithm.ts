@@ -33,6 +33,7 @@ export interface TimelessRoutingProfile {
   walkingPenaltyMultiplier: number;
   routeChangePenaltySeconds: number;
   sameRouteWalkPenaltySeconds: number;
+  transferWalkingPenaltySeconds: number;
 }
 
 export interface RouteLeg {
@@ -199,6 +200,8 @@ export function findEarliestArrivalPath(
       if (edge.type === RoutingEdgeType.WALK) {
         newArrival = current.arrivalTime + (edge.walkingTimeSeconds ?? 0);
         newWalking += edge.walkingTimeSeconds ?? 0;
+      } else if (edge.type === RoutingEdgeType.TRANSFER) {
+        newArrival = current.arrivalTime;
       } else if (edge.type === RoutingEdgeType.TRANSIT) {
         const dep = edge.departureTimeSeconds ?? 0;
         if (current.arrivalTime > dep) continue;
@@ -537,13 +540,16 @@ export function findTimelessBestPath(
       const edgeDuration = getTimelessEdgeDuration(edge);
       if (edgeDuration === null) continue;
 
-      const isSameRouteWalkShortcut =
+      const isTransferWalk =
         edge.type === RoutingEdgeType.WALK &&
-        current.previousTransitRouteId !== null &&
+        current.previousTransitRouteId !== null;
+
+      const isSameRouteWalkShortcut =
+        isTransferWalk &&
         hasTransitContinuationOnRoute(
           edges,
           edge.toStopId,
-          current.previousTransitRouteId,
+          current.previousTransitRouteId!,
         );
 
       if (edge.type === RoutingEdgeType.TRANSIT && edge.tripId) {
@@ -569,6 +575,7 @@ export function findTimelessBestPath(
             edgeDuration,
             isTransitTransfer,
             isSameRouteWalkShortcut,
+            isTransferWalk,
             profile,
           ),
         totalDuration: current.totalDuration + edgeDuration,
@@ -632,6 +639,8 @@ function reconstructPath(
     let duration = state.arrivalTime - (edge.departureTimeSeconds ?? 0);
     if (edge.type === RoutingEdgeType.WALK) {
       duration = edge.walkingTimeSeconds ?? 0;
+    } else if (edge.type === RoutingEdgeType.TRANSFER) {
+      duration = 0;
     }
 
     rawLegs.unshift({
@@ -722,6 +731,7 @@ export function findTimelessBestPaths(
   fromStopId: string,
   toStopId: string,
   maxOptions = 3,
+  profiles?: TimelessRoutingProfile[],
 ): SearchResult[] {
   const results: SearchResult[] = [];
   const seenPaths = new Set<string>();
@@ -740,7 +750,9 @@ export function findTimelessBestPaths(
 
   if (results.length >= maxOptions) return results;
 
-  for (const profile of TIMELESS_ROUTING_PROFILES) {
+  const effectiveProfiles = profiles ?? TIMELESS_ROUTING_PROFILES;
+
+  for (const profile of effectiveProfiles) {
     const result = findTimelessBestPath(graph, fromStopId, toStopId, profile);
     if (!result.path) {
       if (results.length === 0) results.push(result);
@@ -767,6 +779,10 @@ export function findTimelessBestPaths(
 function getTimelessEdgeDuration(edge: RoutingGraphEdge): number | null {
   if (edge.type === RoutingEdgeType.WALK) {
     return edge.walkingTimeSeconds ?? null;
+  }
+
+  if (edge.type === RoutingEdgeType.TRANSFER) {
+    return 0;
   }
 
   if (edge.type === RoutingEdgeType.TRANSIT) {
@@ -851,6 +867,7 @@ function getTimelessEdgeCost(
   duration: number,
   isTransitTransfer: boolean,
   isSameRouteWalkShortcut: boolean,
+  isTransferWalk: boolean,
   profile: TimelessRoutingProfile,
 ): number {
   const walkingPenalty =
@@ -863,8 +880,17 @@ function getTimelessEdgeCost(
   const transferPenalty = isTransitTransfer
     ? profile.routeChangePenaltySeconds
     : 0;
+  const transferWalkPenalty = isTransferWalk
+    ? profile.transferWalkingPenaltySeconds
+    : 0;
 
-  return duration + walkingPenalty + sameRouteWalkPenalty + transferPenalty;
+  return (
+    duration +
+    walkingPenalty +
+    sameRouteWalkPenalty +
+    transferPenalty +
+    transferWalkPenalty
+  );
 }
 
 function hasTransitContinuationOnRoute(
@@ -918,18 +944,27 @@ export function isPathAmbiguous(legs: RouteLeg[]): boolean {
 
 const MAX_TRANSFERS = 4;
 
-const TIMELESS_ROUTING_PROFILES: TimelessRoutingProfile[] = [
+export const TIMELESS_ROUTING_PROFILES: TimelessRoutingProfile[] = [
   {
     strategy: 'FASTEST',
     walkingPenaltyMultiplier: 0.5,
     routeChangePenaltySeconds: 300,
     sameRouteWalkPenaltySeconds: 1800,
+    transferWalkingPenaltySeconds: 0,
   },
   {
     strategy: 'FEWER_TRANSITS',
     walkingPenaltyMultiplier: 1,
     routeChangePenaltySeconds: 1200,
     sameRouteWalkPenaltySeconds: 3600,
+    transferWalkingPenaltySeconds: 0,
+  },
+  {
+    strategy: 'LESS_WALKING',
+    walkingPenaltyMultiplier: 0.5,
+    routeChangePenaltySeconds: 300,
+    sameRouteWalkPenaltySeconds: 1800,
+    transferWalkingPenaltySeconds: 7200,
   },
 ];
 

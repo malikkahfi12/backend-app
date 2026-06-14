@@ -158,3 +158,167 @@ curl "https://api.example.com/api/v1/search?q=jakarta&lang=id&layers=poi,address
 ```bash
 curl "https://api.example.com/api/v1/search?q=hotel&bbox=106.80,-6.28,106.85,-6.20&layers=poi,address"
 ```
+
+---
+
+## Plan Route API
+
+### Endpoint
+
+```
+GET /api/v1/routing
+```
+
+Computes transit routes between two stops using a custom Dijkstra engine on a graph built from GTFS data. Returns up to 3 route options with transfer preference controls and alternative service information.
+
+---
+
+### Parameters
+
+| Param | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `fromStopId` | string | No* | — | UUID of the origin stop. |
+| `toStopId` | string | No* | — | UUID of the destination stop. |
+| `fromStopName` | string | No* | — | Fuzzy-matched name of the origin stop (e.g. `Harmoni`). |
+| `toStopName` | string | No* | — | Fuzzy-matched name of the destination stop (e.g. `Kota`). |
+| `departureTimeSeconds` | integer | No | — | Departure time as seconds since midnight (triggers scheduled routing). If omitted, timeless (frequency-based) routing is used. Range: `0`–`86400`. |
+| `transferPreference` | enum | No | `any` | Transfer walking preference: `any` (no preference) or `direct` (prefer same-station transfers, penalize walking between transfers). |
+
+*Either `fromStopId`/`toStopId` **or** `fromStopName`/`toStopName` must be provided.
+
+---
+
+### Response
+
+#### Success (200)
+
+```json
+{
+  "data": {
+    "fromStopId": "uuid-...",
+    "toStopId": "uuid-...",
+    "fromStopName": "Harmoni",
+    "toStopName": "Kota",
+    "warnings": [
+      "No routes with same-station transfers found. Showing best available routes with walking transfers."
+    ],
+    "options": [
+      {
+        "strategy": "FASTEST",
+        "totalDurationSeconds": 2400,
+        "walkingDurationSeconds": 300,
+        "waitingDurationSeconds": 180,
+        "transferCount": 1,
+        "legs": [
+          {
+            "type": "WALK",
+            "fromStopId": "uuid-...",
+            "toStopId": "uuid-...",
+            "fromStopName": "Harmoni",
+            "toStopName": "Harmoni BRT",
+            "durationSeconds": 120,
+            "distanceMeters": 85,
+            "geometry": "v{lwJwkxvjE..."
+          },
+          {
+            "type": "TRANSIT",
+            "fromStopId": "uuid-...",
+            "toStopId": "uuid-...",
+            "fromStopName": "Harmoni BRT",
+            "toStopName": "Kota Platform 1",
+            "routeId": "uuid-...",
+            "routeName": "5",
+            "tripId": "uuid-...",
+            "durationSeconds": 1800,
+            "alternativeRoutes": [
+              { "routeId": "uuid-...", "routeName": "5C" },
+              { "routeId": "uuid-...", "routeName": "Jak 17" }
+            ],
+            "geometry": "q{xkArfuhjF..."
+          },
+          {
+            "type": "TRANSFER",
+            "fromStopId": "uuid-...",
+            "toStopId": "uuid-...",
+            "fromStopName": "Kota Platform 1",
+            "toStopName": "Kota Platform 3",
+            "durationSeconds": 0,
+            "distanceMeters": 0
+          },
+          {
+            "type": "TRANSIT",
+            "fromStopId": "uuid-...",
+            "toStopId": "uuid-...",
+            "routeName": "2",
+            "durationSeconds": 600
+          },
+          {
+            "type": "WALK",
+            "fromStopName": "Kota Platform 3",
+            "toStopName": "Kota",
+            "durationSeconds": 180,
+            "distanceMeters": 130,
+            "geometry": "s|loH{c|cjF..."
+          }
+        ]
+      }
+    ]
+  },
+  "meta": {
+    "graphVersion": 18,
+    "schemaVersion": 3,
+    "builtAt": "2026-06-14T09:00:00.000Z",
+    "source": "redis"
+  }
+}
+```
+
+#### Leg Types
+
+| Type | Description |
+|---|---|
+| `WALK` | Walking segment between stops (access, egress, or walking transfer). Includes `distanceMeters` and polyline6 `geometry`. |
+| `TRANSIT` | Transit vehicle segment. Includes `routeId`, `routeName`, `tripId`, and optionally `alternativeRoutes` (other routes serving the same stop-to-stop segment). |
+| `TRANSFER` | Same-station platform change. Zero duration and distance. Only present when stops share a `parent_station_id` in the GTFS data. |
+
+#### Route Strategies
+
+| Strategy | Description |
+|---|---|
+| `FASTEST` | Optimizes for shortest total travel time. |
+| `FEWER_TRANSITS` | Minimizes the number of transfers, tolerating longer walks. |
+| `LESS_WALKING` | Avoids walking between transfers. Selected automatically when `transferPreference=direct`. Heavily penalizes WALK legs that occur between transit rides. |
+
+#### Warnings
+
+The `warnings` array provides advisories about the routing result:
+
+| Warning | Trigger |
+|---|---|
+| `"No routes with same-station transfers found. Showing best available routes with walking transfers."` | `transferPreference=direct` was requested but all returned route options require at least one walking transfer between different stops. |
+
+#### Alternative Routes
+
+Each `TRANSIT` leg includes `alternativeRoutes` when other routes serve the same stop-to-stop segment. This enables the frontend to display labels like **"Bus 5 / 5C"** or **"Jak 16 / Jak 17"** without making additional API calls.
+
+---
+
+### Examples
+
+#### Basic route search by stop name
+
+```bash
+curl "https://api.example.com/api/v1/routing?fromStopName=Harmoni&toStopName=Kota"
+```
+
+#### Route search with departure time (scheduled routing)
+
+```bash
+curl "https://api.example.com/api/v1/routing?fromStopId=uuid-a&toStopId=uuid-b&departureTimeSeconds=28800"
+```
+
+#### Prefer same-station transfers (no walking between transfers)
+
+```bash
+curl "https://api.example.com/api/v1/routing?fromStopName=Harmoni&toStopName=Kota&transferPreference=direct"
+```

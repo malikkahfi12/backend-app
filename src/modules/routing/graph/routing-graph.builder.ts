@@ -33,6 +33,7 @@ export class RoutingGraphBuilder {
         name: stop.name,
         latitude: stop.latitude,
         longitude: stop.longitude,
+        parentStationId: stop.parent_station_id,
       });
       adjacencyList.set(stop.id, []);
     }
@@ -40,6 +41,8 @@ export class RoutingGraphBuilder {
     this.logger.log(`Nodes: ${nodes.size}`);
 
     await this.buildWalkingEdges(adjacencyList);
+
+    this.buildTransferEdges(adjacencyList, nodes);
 
     await this.buildTransitEdges(adjacencyList, nodes);
 
@@ -93,6 +96,58 @@ export class RoutingGraphBuilder {
     }
 
     this.logger.log(`Walking edges: ${pairs.length * 2}`);
+  }
+
+  private buildTransferEdges(
+    adjacencyList: Map<string, RoutingGraphEdge[]>,
+    nodes: Map<string, RoutingGraphNode>,
+  ): void {
+    const stationGroups = new Map<string, string[]>();
+
+    for (const [stopId, node] of nodes) {
+      if (!node.parentStationId) continue;
+      const group = stationGroups.get(node.parentStationId);
+      if (group) {
+        group.push(stopId);
+      } else {
+        stationGroups.set(node.parentStationId, [stopId]);
+      }
+    }
+
+    let transferEdges = 0;
+
+    for (const [, stopIds] of stationGroups) {
+      if (stopIds.length < 2) continue;
+
+      for (let i = 0; i < stopIds.length; i++) {
+        for (let j = i + 1; j < stopIds.length; j++) {
+          const fromId = stopIds[i];
+          const toId = stopIds[j];
+
+          const edge: RoutingGraphEdge = {
+            fromStopId: fromId,
+            toStopId: toId,
+            type: RoutingEdgeType.TRANSFER,
+            distanceMeters: 0,
+            walkingTimeSeconds: 0,
+          };
+
+          const reverseEdge: RoutingGraphEdge = {
+            fromStopId: toId,
+            toStopId: fromId,
+            type: RoutingEdgeType.TRANSFER,
+            distanceMeters: 0,
+            walkingTimeSeconds: 0,
+          };
+
+          adjacencyList.get(fromId)?.push(edge);
+          adjacencyList.get(toId)?.push(reverseEdge);
+          transferEdges += 2;
+        }
+      }
+    }
+
+    this.logger.log(`Transfer edges: ${transferEdges}`);
   }
 
   private async buildTransitEdges(
