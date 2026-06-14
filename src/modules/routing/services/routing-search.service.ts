@@ -286,6 +286,7 @@ export class RoutingSearchService {
     if (leg.type === RoutingEdgeType.TRANSIT && leg.routeId) {
       const edges = graph.adjacencyList.get(leg.fromStopId) ?? [];
       const seenRoutes = new Set<string>();
+      const seenRouteNames = new Set<string>();
 
       dto.alternativeRoutes = [];
 
@@ -300,7 +301,9 @@ export class RoutingSearchService {
         }
 
         if (seenRoutes.has(edge.routeId)) continue;
+        if (edge.routeName && seenRouteNames.has(edge.routeName)) continue;
         seenRoutes.add(edge.routeId);
+        if (edge.routeName) seenRouteNames.add(edge.routeName);
 
         dto.alternativeRoutes.push({
           routeId: edge.routeId,

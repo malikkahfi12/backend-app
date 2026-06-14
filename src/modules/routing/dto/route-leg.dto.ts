@@ -68,8 +68,7 @@ export class RouteLegDto {
 
   @ApiPropertyOptional({
     type: [RouteAlternativeDto],
-    description:
-      'Other routes serving the same stop-to-stop transit segment',
+    description: 'Other routes serving the same stop-to-stop transit segment',
   })
   alternativeRoutes?: RouteAlternativeDto[];
 }
